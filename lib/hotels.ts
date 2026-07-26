@@ -7,7 +7,7 @@ export const HOTELS: Hotel[] = [
     cityZh: "首尔",
     nameZh: "首尔东大门 1",
     nameSource: "Toyoko Inn Seoul Dongdaemun No.1",
-    officialDetailUrl: "https://www.toyoko-inn.com/eng/search/detail/00208/",
+    officialDetailUrl: "https://www.toyoko-inn.com/search/detail/00208/",
     active: true,
   },
   {
@@ -16,7 +16,7 @@ export const HOTELS: Hotel[] = [
     cityZh: "首尔",
     nameZh: "首尔东大门 2",
     nameSource: "Toyoko Inn Seoul Dongdaemun No.2",
-    officialDetailUrl: "https://www.toyoko-inn.com/eng/search/detail/00291/",
+    officialDetailUrl: "https://www.toyoko-inn.com/search/detail/00291/",
     active: true,
   },
   {
@@ -25,7 +25,7 @@ export const HOTELS: Hotel[] = [
     cityZh: "首尔",
     nameZh: "首尔江南",
     nameSource: "Toyoko Inn Seoul Gangnam",
-    officialDetailUrl: "https://www.toyoko-inn.com/eng/search/detail/00282/",
+    officialDetailUrl: "https://www.toyoko-inn.com/search/detail/00282/",
     active: true,
   },
   {
@@ -34,7 +34,7 @@ export const HOTELS: Hotel[] = [
     cityZh: "首尔",
     nameZh: "首尔永登浦",
     nameSource: "Toyoko Inn Seoul Yeongdeungpo",
-    officialDetailUrl: "https://www.toyoko-inn.com/eng/search/detail/00311/",
+    officialDetailUrl: "https://www.toyoko-inn.com/search/detail/00311/",
     active: true,
   },
   {
@@ -43,7 +43,7 @@ export const HOTELS: Hotel[] = [
     cityZh: "仁川",
     nameZh: "仁川富平",
     nameSource: "Toyoko Inn Incheon Bupyeong",
-    officialDetailUrl: "https://www.toyoko-inn.com/eng/search/detail/00277/",
+    officialDetailUrl: "https://www.toyoko-inn.com/search/detail/00277/",
     active: true,
   },
   {
@@ -52,7 +52,7 @@ export const HOTELS: Hotel[] = [
     cityZh: "大田",
     nameZh: "大田政府大楼前",
     nameSource: "Toyoko Inn Daejeon Government Complex",
-    officialDetailUrl: "https://www.toyoko-inn.com/eng/search/detail/00234/",
+    officialDetailUrl: "https://www.toyoko-inn.com/search/detail/00234/",
     active: true,
   },
   {
@@ -61,7 +61,7 @@ export const HOTELS: Hotel[] = [
     cityZh: "大邱",
     nameZh: "大邱东城路",
     nameSource: "Toyoko Inn Daegu Dongseong-ro",
-    officialDetailUrl: "https://www.toyoko-inn.com/eng/search/detail/00297/",
+    officialDetailUrl: "https://www.toyoko-inn.com/search/detail/00297/",
     active: true,
   },
   {
@@ -70,7 +70,7 @@ export const HOTELS: Hotel[] = [
     cityZh: "蔚山",
     nameZh: "蔚山三山洞",
     nameSource: "Toyoko Inn Ulsan Samsandong",
-    officialDetailUrl: "https://www.toyoko-inn.com/eng/search/detail/00310/",
+    officialDetailUrl: "https://www.toyoko-inn.com/search/detail/00310/",
     active: true,
   },
   {
@@ -79,7 +79,7 @@ export const HOTELS: Hotel[] = [
     cityZh: "昌原",
     nameZh: "昌原",
     nameSource: "Toyoko Inn Changwon",
-    officialDetailUrl: "https://www.toyoko-inn.com/eng/search/detail/00335/",
+    officialDetailUrl: "https://www.toyoko-inn.com/search/detail/00335/",
     active: true,
   },
   {
@@ -88,7 +88,7 @@ export const HOTELS: Hotel[] = [
     cityZh: "釜山",
     nameZh: "釜山西面",
     nameSource: "Toyoko Inn Busan Seomyeon",
-    officialDetailUrl: "https://www.toyoko-inn.com/eng/search/detail/00221/",
+    officialDetailUrl: "https://www.toyoko-inn.com/search/detail/00221/",
     active: true,
   },
   {
@@ -97,7 +97,7 @@ export const HOTELS: Hotel[] = [
     cityZh: "釜山",
     nameZh: "釜山站 1",
     nameSource: "Toyoko Inn Busan Station No.1",
-    officialDetailUrl: "https://www.toyoko-inn.com/eng/search/detail/00194/",
+    officialDetailUrl: "https://www.toyoko-inn.com/search/detail/00194/",
     active: true,
   },
   {
@@ -106,7 +106,7 @@ export const HOTELS: Hotel[] = [
     cityZh: "釜山",
     nameZh: "釜山中央站",
     nameSource: "Toyoko Inn Busan Jungang Station",
-    officialDetailUrl: "https://www.toyoko-inn.com/eng/search/detail/00178/",
+    officialDetailUrl: "https://www.toyoko-inn.com/search/detail/00178/",
     active: true,
   },
   {
@@ -115,7 +115,7 @@ export const HOTELS: Hotel[] = [
     cityZh: "釜山",
     nameZh: "釜山海云台 2",
     nameSource: "Toyoko Inn Busan Haeundae No.2",
-    officialDetailUrl: "https://www.toyoko-inn.com/eng/search/detail/00256/",
+    officialDetailUrl: "https://www.toyoko-inn.com/search/detail/00256/",
     active: true,
   },
 ];

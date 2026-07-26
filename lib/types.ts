@@ -40,11 +40,13 @@ export interface Hotel {
 }
 
 export interface RoomOffer {
+  roomTypeId: string | null;
   roomTypeSource: string;
-  roomTypeZh: string | null;
+  roomTypeZh: string;
+  roomImageUrl: string | null;
   smokingType: SmokingType;
   planNameSource: string;
-  planNameZh: string | null;
+  planNameZh: string;
   planId: string | null;
   priceAmount: number;
   currency: string;

@@ -165,7 +165,7 @@ a {
 
 .search-shell {
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   border: 1px solid rgba(21, 63, 115, 0.12);
   border-radius: 6px 38px 6px 6px;
   background: var(--surface);
@@ -230,6 +230,7 @@ a {
 }
 
 .field > span,
+.field > label,
 .smoking-fieldset legend {
   color: var(--ink-2);
   font-size: 12px;
@@ -261,6 +262,237 @@ a {
 
 .field-region {
   grid-column: span 2;
+}
+
+.date-range-picker {
+  position: relative;
+  z-index: 5;
+  grid-column: span 2;
+}
+
+.date-range-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.date-input-shell {
+  position: relative;
+  height: 48px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: #fbfaf7;
+  display: flex;
+  align-items: center;
+  cursor: text;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
+}
+
+.date-input-shell:hover,
+.date-input-shell:focus-within,
+.date-input-shell.is-active {
+  border-color: rgba(21, 63, 115, 0.55);
+  background: white;
+  box-shadow: 0 0 0 3px rgba(21, 63, 115, 0.06);
+}
+
+.field .date-input-shell input {
+  height: 46px;
+  padding-right: 46px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.field .date-input-shell input:hover,
+.field .date-input-shell input:focus {
+  border: 0;
+  box-shadow: none;
+  outline: 0;
+}
+
+.calendar-glyph {
+  position: absolute;
+  right: 12px;
+  width: 26px;
+  height: 26px;
+  border: 1px solid #c9c3b8;
+  border-radius: 3px;
+  display: grid;
+  place-items: center;
+  color: var(--blue);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  font-weight: 800;
+  pointer-events: none;
+}
+
+.calendar-glyph::before {
+  content: "";
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  left: 4px;
+  border-top: 2px solid var(--coral);
+}
+
+.date-calendar-popover {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: min(640px, calc(100vw - 48px));
+  padding: 20px;
+  border: 1px solid rgba(21, 63, 115, 0.18);
+  border-radius: 5px 22px 5px 5px;
+  background: white;
+  box-shadow: 0 24px 70px rgba(23, 36, 61, 0.2);
+}
+
+.calendar-toolbar {
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--line-soft);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.calendar-toolbar > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.calendar-toolbar strong {
+  font-size: 14px;
+}
+
+.calendar-toolbar span,
+.calendar-footer {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.calendar-nav {
+  display: flex;
+  gap: 6px;
+}
+
+.calendar-nav button {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: #fbfaf7;
+  color: var(--blue);
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.calendar-nav button:hover:not(:disabled) {
+  border-color: var(--blue);
+  background: var(--blue-soft);
+}
+
+.calendar-nav button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.calendar-months {
+  padding: 17px 0 13px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.calendar-month h3 {
+  margin: 0 0 11px;
+  text-align: center;
+  font-size: 12px;
+}
+
+.calendar-weekdays,
+.calendar-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.calendar-weekdays {
+  margin-bottom: 5px;
+  color: var(--muted);
+  font-size: 9px;
+  text-align: center;
+}
+
+.calendar-weekdays span {
+  padding: 4px 0;
+}
+
+.calendar-day {
+  position: relative;
+  min-width: 0;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink-2);
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.calendar-day:hover:not(:disabled) {
+  z-index: 1;
+  border-radius: 999px;
+  background: var(--blue-soft);
+  color: var(--blue);
+}
+
+.calendar-day.is-outside {
+  color: #b8b2a8;
+}
+
+.calendar-day.is-in-range {
+  background: var(--blue-soft);
+  color: var(--blue);
+}
+
+.calendar-day.is-range-start,
+.calendar-day.is-range-end {
+  border-radius: 999px;
+  background: var(--blue);
+  color: white;
+}
+
+.calendar-day:disabled {
+  color: #d6d1c8;
+  text-decoration: line-through;
+  cursor: not-allowed;
+}
+
+.calendar-footer {
+  padding-top: 12px;
+  border-top: 1px solid var(--line-soft);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.calendar-footer button {
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: var(--blue);
+  font-size: 10px;
+  font-weight: 750;
+  cursor: pointer;
 }
 
 .night-count {
@@ -814,28 +1046,93 @@ a {
 }
 
 .offer-list {
-  padding: 0 24px 6px;
+  padding: 18px 24px 6px;
 }
 
-.offer-row {
-  padding: 21px 0;
-  border-bottom: 1px solid var(--line-soft);
+.room-group {
+  margin-bottom: 16px;
+  overflow: hidden;
+  border: 1px solid var(--line-soft);
+  border-radius: 4px 16px 4px 4px;
+  background: #fcfbf8;
+}
+
+.room-group.is-fallback {
+  border-left: 3px solid var(--orange);
+}
+
+.room-overview {
+  padding: 16px;
   display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(180px, 0.6fr) 190px;
-  gap: 24px;
+  grid-template-columns: 210px minmax(0, 1fr);
+  gap: 18px;
   align-items: center;
 }
 
-.offer-row:last-child {
+.room-image,
+.room-image-placeholder {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border-radius: 3px 12px 3px 3px;
+  background: var(--blue-soft);
+  object-fit: cover;
+}
+
+.room-image-placeholder {
+  display: grid;
+  place-items: center;
+  color: rgba(21, 63, 115, 0.35);
+  font-family: "Noto Serif SC", "Songti SC", serif;
+  font-size: 28px;
+}
+
+.room-heading {
+  min-width: 0;
+}
+
+.room-plan-count {
+  margin-top: 14px;
+  display: inline-flex;
+  color: var(--green);
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.room-plans {
+  border-top: 1px solid var(--line-soft);
+  background: white;
+}
+
+.plan-row {
+  padding: 18px 16px;
+  border-bottom: 1px solid var(--line-soft);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 0.52fr) 190px;
+  gap: 22px;
+  align-items: center;
+}
+
+.plan-row:last-child {
   border-bottom: 0;
 }
 
-.offer-row.is-fallback {
-  margin: 0 -24px;
-  padding-right: 24px;
-  padding-left: 21px;
-  border-left: 3px solid var(--orange);
-  background: linear-gradient(90deg, var(--orange-soft), transparent 46%);
+.plan-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.plan-main > strong {
+  color: var(--ink-2);
+  font-size: 13px;
+}
+
+.plan-source {
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.45;
 }
 
 .offer-title-line {
@@ -877,25 +1174,12 @@ a {
   font-size: 10px;
 }
 
-.offer-plan {
-  margin-top: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
 .plan-kicker {
   color: var(--muted);
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-}
-
-.offer-plan strong {
-  color: var(--ink-2);
-  font-size: 12px;
-  font-weight: 650;
 }
 
 .qualification-note {
@@ -1134,11 +1418,11 @@ footer p {
     flex-wrap: wrap;
   }
 
-  .offer-row {
+  .plan-row {
     grid-template-columns: minmax(0, 1fr) 190px;
   }
 
-  .offer-action {
+  .plan-row .offer-action {
     grid-column: span 2;
     flex-direction: row;
     align-items: center;
@@ -1216,6 +1500,25 @@ footer p {
     font-size: 13px;
   }
 
+  .date-range-fields {
+    gap: 10px;
+  }
+
+  .date-calendar-popover {
+    right: auto;
+    left: 0;
+    width: 100%;
+    padding: 17px 14px;
+  }
+
+  .calendar-months {
+    grid-template-columns: 1fr;
+  }
+
+  .calendar-month-secondary {
+    display: none;
+  }
+
   .history-section {
     padding-bottom: 48px;
   }
@@ -1270,18 +1573,24 @@ footer p {
   }
 
   .offer-list {
-    padding: 0 18px 5px;
+    padding: 16px 18px 1px;
   }
 
-  .offer-row {
+  .room-overview {
+    grid-template-columns: 112px minmax(0, 1fr);
+    gap: 13px;
+    padding: 13px;
+  }
+
+  .room-image,
+  .room-image-placeholder {
+    aspect-ratio: 1 / 1;
+  }
+
+  .plan-row {
     grid-template-columns: 1fr;
     gap: 16px;
-  }
-
-  .offer-row.is-fallback {
-    margin: 0 -18px;
-    padding-right: 18px;
-    padding-left: 15px;
+    padding: 17px 14px;
   }
 
   .offer-price {
@@ -1289,7 +1598,7 @@ footer p {
     border-top: 1px dashed var(--line);
   }
 
-  .offer-action {
+  .plan-row .offer-action {
     grid-column: auto;
     align-items: stretch;
     flex-direction: column;

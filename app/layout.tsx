@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import "./globals.css";
 
-const title = "韩国东横 INN 余房速查｜住见韩国";
+const title = "韩国东横INN房况查询";
 const description =
   "一次查询韩国同城全部东横 INN 的实时余房、房型、住宿计划和官网价格。";
 

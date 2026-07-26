@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { DateRangePicker } from "@/app/date-range-picker";
 import { FORM_LIMITS, REGION_OPTIONS, hotelsForRegion } from "@/lib/hotels";
 import { zhCN as c } from "@/lib/i18n";
 import type {
@@ -20,8 +21,19 @@ type ResultView = "all" | "available" | "failed";
 const HISTORY_KEY = "toyoko-korea-search-history-v1";
 const MAX_HISTORY = 10;
 const MAX_CONCURRENCY = 3;
+const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+function isValidDate(date: string) {
+  if (!ISO_DATE_PATTERN.test(date)) return false;
+  const value = new Date(`${date}T00:00:00Z`);
+  return (
+    Number.isFinite(value.getTime()) &&
+    value.toISOString().slice(0, 10) === date
+  );
+}
 
 function addDays(date: string, days: number) {
+  if (!isValidDate(date)) return "";
   const value = new Date(`${date}T00:00:00Z`);
   value.setUTCDate(value.getUTCDate() + days);
   return value.toISOString().slice(0, 10);
@@ -49,6 +61,7 @@ function defaultDates() {
 }
 
 function nightsBetween(checkIn: string, checkOut: string) {
+  if (!isValidDate(checkIn) || !isValidDate(checkOut)) return 0;
   const difference =
     Date.parse(`${checkOut}T00:00:00Z`) -
     Date.parse(`${checkIn}T00:00:00Z`);
@@ -56,6 +69,7 @@ function nightsBetween(checkIn: string, checkOut: string) {
 }
 
 function formatDate(date: string) {
+  if (!isValidDate(date)) return "日期未填写完整";
   return new Intl.DateTimeFormat("zh-CN", {
     month: "short",
     day: "numeric",
@@ -156,31 +170,63 @@ function StatusPill({
   return <span className={`status-pill status-${tone}`}>{children}</span>;
 }
 
-function OfferRow({ offer }: { offer: RoomOffer }) {
+type RoomGroupData = {
+  key: string;
+  representative: RoomOffer;
+  plans: RoomOffer[];
+};
+
+function groupOffers(offers: RoomOffer[]): RoomGroupData[] {
+  const groups = new Map<string, RoomGroupData>();
+  offers.forEach((offer) => {
+    const key = `${offer.roomTypeId ?? offer.roomTypeSource}-${offer.smokingType}`;
+    const existing = groups.get(key);
+    if (existing) {
+      existing.plans.push(offer);
+    } else {
+      groups.set(key, { key, representative: offer, plans: [offer] });
+    }
+  });
+  return Array.from(groups.values());
+}
+
+function RoomImage({ offer }: { offer: RoomOffer }) {
+  const [hasError, setHasError] = useState(false);
+  if (!offer.roomImageUrl || hasError) {
+    return (
+      <div className="room-image-placeholder" aria-hidden="true">
+        房
+      </div>
+    );
+  }
+
+  return (
+    // The official image URL is dynamic and should be loaded directly.
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      className="room-image"
+      src={offer.roomImageUrl}
+      alt={`${offer.roomTypeZh}官网图片`}
+      loading="lazy"
+      referrerPolicy="no-referrer"
+      onError={() => setHasError(true)}
+    />
+  );
+}
+
+function PlanRow({ offer }: { offer: RoomOffer }) {
   const stock = Math.max(
     offer.generalVacantRoom,
     offer.membershipVacantRoom,
   );
   return (
-    <article
-      className={`offer-row${offer.isSmokingFallback ? " is-fallback" : ""}`}
-    >
-      <div className="offer-main">
-        <div className="offer-title-line">
-          <h4>{offer.roomTypeZh ?? offer.roomTypeSource}</h4>
-          <span className={`smoking-tag smoking-${offer.smokingType}`}>
-            {c.smoking[offer.smokingType]}
-          </span>
-        </div>
-        {offer.roomTypeZh && (
-          <p className="source-name">
-            {c.offer.officialRoomName}：{offer.roomTypeSource}
-          </p>
-        )}
-        <div className="offer-plan">
-          <span className="plan-kicker">{c.offer.officialPlanName}</span>
-          <strong>{offer.planNameZh ?? offer.planNameSource}</strong>
-        </div>
+    <article className="plan-row">
+      <div className="plan-main">
+        <span className="plan-kicker">{c.offer.officialPlanName}</span>
+        <strong>{offer.planNameZh}</strong>
+        <span className="plan-source">
+          {c.offer.officialPlanSource}：{offer.planNameSource}
+        </span>
         {offer.qualificationNote && (
           <p className="qualification-note">{offer.qualificationNote}</p>
         )}
@@ -227,6 +273,39 @@ function OfferRow({ offer }: { offer: RoomOffer }) {
   );
 }
 
+function RoomGroup({ group }: { group: RoomGroupData }) {
+  const { representative: room, plans } = group;
+  const hasFallback = plans.some((plan) => plan.isSmokingFallback);
+
+  return (
+    <section className={`room-group${hasFallback ? " is-fallback" : ""}`}>
+      <div className="room-overview">
+        <RoomImage offer={room} />
+        <div className="room-heading">
+          <div className="offer-title-line">
+            <h4>{room.roomTypeZh}</h4>
+            <span className={`smoking-tag smoking-${room.smokingType}`}>
+              {c.smoking[room.smokingType]}
+            </span>
+          </div>
+          <p className="source-name">
+            {c.offer.officialRoomName}：{room.roomTypeSource}
+          </p>
+          <span className="room-plan-count">{plans.length} 个可订计划</span>
+        </div>
+      </div>
+      <div className="room-plans">
+        {plans.map((offer, index) => (
+          <PlanRow
+            offer={offer}
+            key={`${offer.planId ?? offer.planNameSource}-${index}`}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function HotelCard({
   state,
   onRetry,
@@ -237,6 +316,8 @@ function HotelCard({
   retrying: boolean;
 }) {
   const { hotel } = state;
+  const roomGroups =
+    state.phase === "completed" ? groupOffers(state.visibleOffers) : [];
   return (
     <section className="hotel-card">
       <div className="hotel-card-header">
@@ -287,7 +368,8 @@ function HotelCard({
               {state.result.status === "available" && (
                 <span className="offer-count">
                   {template(c.hotel.plans, {
-                    count: state.visibleOffers.length,
+                    rooms: roomGroups.length,
+                    plans: state.visibleOffers.length,
                   })}
                 </span>
               )}
@@ -365,11 +447,8 @@ function HotelCard({
 
           {state.visibleOffers.length > 0 && (
             <div className="offer-list">
-              {state.visibleOffers.map((offer, index) => (
-                <OfferRow
-                  key={`${offer.roomTypeSource}-${offer.planId ?? offer.planNameSource}-${index}`}
-                  offer={offer}
-                />
+              {roomGroups.map((group) => (
+                <RoomGroup group={group} key={group.key} />
               ))}
             </div>
           )}
@@ -380,10 +459,10 @@ function HotelCard({
 }
 
 export default function Home() {
-  const dates = useRef(defaultDates());
+  const [initialDates] = useState(defaultDates);
   const [regionId, setRegionId] = useState<RegionId>("seoul");
-  const [checkIn, setCheckIn] = useState(dates.current.checkIn);
-  const [checkOut, setCheckOut] = useState(dates.current.checkOut);
+  const [checkIn, setCheckIn] = useState(initialDates.checkIn);
+  const [checkOut, setCheckOut] = useState(initialDates.checkOut);
   const [adultsPerRoom, setAdultsPerRoom] = useState(1);
   const [roomCount, setRoomCount] = useState(1);
   const [smokingPreference, setSmokingPreference] =
@@ -403,17 +482,20 @@ export default function Home() {
   const formRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    try {
-      const stored = JSON.parse(
-        localStorage.getItem(HISTORY_KEY) ?? "[]",
-      ) as HistoryCriteria[];
-      if (Array.isArray(stored)) {
-        setHistory(stored.slice(0, MAX_HISTORY));
-        if (stored[0]?.regionId) setRegionId(stored[0].regionId);
+    const frame = requestAnimationFrame(() => {
+      try {
+        const stored = JSON.parse(
+          localStorage.getItem(HISTORY_KEY) ?? "[]",
+        ) as HistoryCriteria[];
+        if (Array.isArray(stored)) {
+          setHistory(stored.slice(0, MAX_HISTORY));
+          if (stored[0]?.regionId) setRegionId(stored[0].regionId);
+        }
+      } catch {
+        localStorage.removeItem(HISTORY_KEY);
       }
-    } catch {
-      localStorage.removeItem(HISTORY_KEY);
-    }
+    });
+    return () => cancelAnimationFrame(frame);
   }, []);
 
   const nights = nightsBetween(checkIn, checkOut);
@@ -461,13 +543,27 @@ export default function Home() {
     ) {
       return c.form.required;
     }
+    if (
+      !isValidDate(criteria.checkIn) ||
+      !isValidDate(criteria.checkOut)
+    ) {
+      return c.form.invalidDate;
+    }
     if (criteria.checkIn < koreaToday()) return c.form.checkInPast;
     if (criteria.checkOut <= criteria.checkIn) return c.form.invalidCheckOut;
     return "";
   }
 
   function saveHistory(criteria: SearchCriteria) {
-    const { requestedAt: _requestedAt, ...value } = criteria;
+    const value: HistoryCriteria = {
+      regionId: criteria.regionId,
+      checkIn: criteria.checkIn,
+      checkOut: criteria.checkOut,
+      adultsPerRoom: criteria.adultsPerRoom,
+      roomCount: criteria.roomCount,
+      smokingPreference: criteria.smokingPreference,
+      locale: criteria.locale,
+    };
     const signature = JSON.stringify(value);
     const next = [
       value,
@@ -562,6 +658,19 @@ export default function Home() {
     await Promise.all(
       Array.from({ length: Math.min(MAX_CONCURRENCY, hotels.length) }, worker),
     );
+    setHotelStates((states) =>
+      states
+        .map((state, index) => ({ state, index }))
+        .sort((a, b) => {
+          const rank = (item: UiHotelState) =>
+            item.phase === "completed" &&
+            item.result.status === "available"
+              ? 0
+              : 1;
+          return rank(a.state) - rank(b.state) || a.index - b.index;
+        })
+        .map(({ state }) => state),
+    );
     setTotalDuration(Date.now() - startedAt);
     setIsRunning(false);
     if (collected.some((result) => result.status !== "failed")) {
@@ -590,8 +699,8 @@ export default function Home() {
         ...queryCriteria,
         requestedAt: new Date().toISOString(),
       });
-      setHotelStates((states) =>
-        states.map((state) =>
+      setHotelStates((states) => {
+        const next = states.map((state) =>
           state.hotel.hotelCode === hotel.hotelCode
             ? toCompletedState(
                 hotel,
@@ -599,8 +708,19 @@ export default function Home() {
                 queryCriteria.smokingPreference,
               )
             : state,
-        ),
-      );
+        );
+        return next
+          .map((state, index) => ({ state, index }))
+          .sort((a, b) => {
+            const rank = (item: UiHotelState) =>
+              item.phase === "completed" &&
+              item.result.status === "available"
+                ? 0
+                : 1;
+            return rank(a.state) - rank(b.state) || a.index - b.index;
+          })
+          .map(({ state }) => state);
+      });
     } finally {
       setRetryingCodes((codes) => {
         const next = new Set(codes);
@@ -630,7 +750,7 @@ export default function Home() {
     <main>
       <header className="site-header">
         <a href="#" className="wordmark" aria-label={c.productName}>
-          <span className="wordmark-mark">住</span>
+          <span className="wordmark-mark">韩</span>
           <span>{c.brand}</span>
         </a>
         <div className="header-note">
@@ -677,27 +797,13 @@ export default function Home() {
                 </select>
               </label>
 
-              <label className="field">
-                <span>{c.fields.checkIn}</span>
-                <input
-                  type="date"
-                  value={checkIn}
-                  min={koreaToday()}
-                  onChange={(event) => setCheckIn(event.target.value)}
-                  required
-                />
-              </label>
-
-              <label className="field">
-                <span>{c.fields.checkOut}</span>
-                <input
-                  type="date"
-                  value={checkOut}
-                  min={addDays(checkIn, 1)}
-                  onChange={(event) => setCheckOut(event.target.value)}
-                  required
-                />
-              </label>
+              <DateRangePicker
+                checkIn={checkIn}
+                checkOut={checkOut}
+                minDate={koreaToday()}
+                onCheckInChange={setCheckIn}
+                onCheckOutChange={setCheckOut}
+              />
 
               <div className="night-count" aria-live="polite">
                 <strong>{nights}</strong>
@@ -994,7 +1100,7 @@ export default function Home() {
 
       <footer>
         <div>
-          <span className="wordmark-mark">住</span>
+          <span className="wordmark-mark">韩</span>
           <div>
             <strong>{c.footer.title}</strong>
             <p>{c.footer.description}</p>

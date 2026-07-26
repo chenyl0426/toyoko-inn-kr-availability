@@ -1,8 +1,7 @@
-# vinext-starter
+# 韩国东横INN房况查询
 
-A clean full-stack starter running on
-[vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
-Drizzle support.
+一次查询韩国同一地区全部东横 INN 的实时房况，并按酒店、房型与住宿计划汇总
+官网公开的库存和价格。本站仅供检索比较，最终预订仍在东横 INN 官网完成。
 
 ## Prerequisites
 
