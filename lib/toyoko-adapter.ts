@@ -4,6 +4,7 @@ import type {
   RoomOffer,
   SearchCriteria,
 } from "./types";
+import { planNameZh, roomNameZh } from "./toyoko-translations";
 
 const OFFICIAL_ORIGIN = "https://www.toyoko-inn.com";
 const REQUEST_TIMEOUT_MS = 13_000;
@@ -28,6 +29,7 @@ type OfficialPlan = {
 type OfficialRoom = {
   roomTypeName?: string | null;
   roomTypeId?: string | null;
+  imageUrls?: string | null;
   specs?: { isSmoking?: boolean | null };
   plans?: OfficialPlan[];
 };
@@ -50,7 +52,7 @@ class AdapterError extends Error {
 }
 
 function buildSourceUrl(hotelCode: string, criteria: SearchCriteria) {
-  const url = new URL("/eng/search/result/room_plan/", OFFICIAL_ORIGIN);
+  const url = new URL("/search/result/room_plan/", OFFICIAL_ORIGIN);
   url.searchParams.set("hotel", hotelCode);
   url.searchParams.set("people", String(criteria.adultsPerRoom));
   url.searchParams.set("room", String(criteria.roomCount));
@@ -125,18 +127,24 @@ function normalizeOffers(
       const isQualifiedPlan =
         membershipCategory !== null &&
         !/^all$|^general$/i.test(membershipCategory);
+      const roomTypeSource =
+        room.roomTypeName?.trim() || "官网未提供房型名称";
+      const planNameSource =
+        plan.planName?.trim() || "官网未提供计划名称";
 
       offers.push({
-        roomTypeSource: room.roomTypeName?.trim() || "官网未提供房型名称",
-        roomTypeZh: null,
+        roomTypeId: room.roomTypeId?.trim() || null,
+        roomTypeSource,
+        roomTypeZh: roomNameZh(roomTypeSource),
+        roomImageUrl: room.imageUrls?.trim() || null,
         smokingType:
           typeof isSmoking === "boolean"
             ? isSmoking
               ? "smoking"
               : "nonSmoking"
             : "unknown",
-        planNameSource: plan.planName?.trim() || "官网未提供计划名称",
-        planNameZh: null,
+        planNameSource,
+        planNameZh: planNameZh(planNameSource),
         planId: plan.planCode?.trim() || null,
         priceAmount,
         currency: "KRW",
@@ -173,7 +181,7 @@ async function fetchOnce(url: URL) {
       signal: controller.signal,
       headers: {
         accept: "text/html,application/xhtml+xml",
-        "accept-language": "en-US,en;q=0.9",
+        "accept-language": "ja-JP,ja;q=0.9",
         "user-agent":
           "ToyokoInn-Korea-Availability/0.1 (personal on-demand search)",
       },

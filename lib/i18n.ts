@@ -1,6 +1,6 @@
 export const zhCN = {
-  brand: "住见韩国",
-  productName: "韩国东横 INN 余房速查",
+  brand: "韩国东横INN房况查询",
+  productName: "韩国东横INN房况查询",
   heroEyebrow: "13 家酒店 · 7 座城市 · 一次查询",
   heroTitle: "把逐家查房，变成一次比较。",
   heroDescription:
@@ -44,6 +44,7 @@ export const zhCN = {
     roomsSummary: "每室 {adults} 位成人 × {rooms} 间房，共 {total} 位成人",
     childNote: "不单独收集同床儿童；请在官网确认儿童与加床规则。",
     required: "请完整填写查询条件。",
+    invalidDate: "请输入有效日期，格式为 YYYY-MM-DD。",
     checkInPast: "入住日期不能早于韩国当地今天。",
     invalidCheckOut: "退房日期必须晚于入住日期。",
   },
@@ -66,7 +67,7 @@ export const zhCN = {
   },
   hotel: {
     code: "酒店代码",
-    plans: "{count} 个可订方案",
+    plans: "{rooms} 个房型 · {plans} 个可订计划",
     officialDetail: "官方详情",
     queriedAt: "查询于 {time}",
     waiting: "等待查询",
@@ -86,8 +87,9 @@ export const zhCN = {
     unknown: "未知错误",
   },
   offer: {
-    officialRoomName: "官网房型",
-    officialPlanName: "住宿计划",
+    officialRoomName: "官网日文",
+    officialPlanName: "可订计划",
+    officialPlanSource: "官网日文",
     stayTotal: "每间 · 本次住宿总价",
     unknownBasis: "价格单位以官网为准",
     generalPrice: "普通价",
