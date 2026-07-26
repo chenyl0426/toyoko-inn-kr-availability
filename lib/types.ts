@@ -1,0 +1,82 @@
+export type RegionId =
+  | "all"
+  | "seoul"
+  | "incheon"
+  | "daejeon"
+  | "daegu"
+  | "ulsan"
+  | "changwon"
+  | "busan";
+
+export type SmokingPreference = "any" | "nonSmokingPreferred" | "smokingOnly";
+export type SmokingType = "nonSmoking" | "smoking" | "unknown";
+export type HotelStatus = "available" | "soldOut" | "failed";
+export type ErrorType =
+  | "timeout"
+  | "officialError"
+  | "accessRestricted"
+  | "parserChanged"
+  | "unknown";
+
+export interface SearchCriteria {
+  regionId: RegionId;
+  checkIn: string;
+  checkOut: string;
+  adultsPerRoom: number;
+  roomCount: number;
+  smokingPreference: SmokingPreference;
+  locale: "zh-CN";
+  requestedAt: string;
+}
+
+export interface Hotel {
+  hotelCode: string;
+  cityId: Exclude<RegionId, "all">;
+  cityZh: string;
+  nameZh: string;
+  nameSource: string;
+  officialDetailUrl: string;
+  active: boolean;
+}
+
+export interface RoomOffer {
+  roomTypeSource: string;
+  roomTypeZh: string | null;
+  smokingType: SmokingType;
+  planNameSource: string;
+  planNameZh: string | null;
+  planId: string | null;
+  priceAmount: number;
+  currency: string;
+  priceBasis: "stayTotal" | "unknown";
+  priceLabelSource: string | null;
+  generalPrice: number | null;
+  membershipPrice: number | null;
+  generalVacantRoom: number;
+  membershipVacantRoom: number;
+  bookingUrl: string;
+  isSmokingFallback: boolean;
+  qualificationNote: string | null;
+}
+
+export interface HotelAvailability {
+  hotelCode: string;
+  status: HotelStatus;
+  offers: RoomOffer[];
+  sourceQueriedAt: string;
+  durationMs: number;
+  errorType: ErrorType | null;
+  sourceUrl: string;
+  message?: string;
+}
+
+export type UiHotelState =
+  | { phase: "waiting" | "querying"; hotel: Hotel }
+  | {
+      phase: "completed";
+      hotel: Hotel;
+      result: HotelAvailability;
+      visibleOffers: RoomOffer[];
+      preferenceNoMatch: boolean;
+      hasSmokingFallback: boolean;
+    };
