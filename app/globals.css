@@ -753,11 +753,43 @@ a {
 .results-title-line {
   display: flex;
   align-items: baseline;
-  gap: 15px;
+  flex-wrap: wrap;
+  gap: 10px 15px;
 }
 
 .results-title-line .eyebrow {
   margin: 0;
+}
+
+.availability-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  border-radius: 999px;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  border: 1.5px solid transparent;
+}
+
+.availability-banner .availability-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.availability-banner.is-available {
+  background: var(--green-soft);
+  border-color: #b9d8cd;
+  color: var(--green);
+}
+
+.availability-banner.is-none {
+  background: var(--red-soft);
+  border-color: #efc8c0;
+  color: var(--red);
 }
 
 .results-topbar h2 {
@@ -1148,12 +1180,20 @@ a {
 }
 
 .smoking-tag {
-  padding: 3px 7px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
   border: 1px solid var(--line);
-  border-radius: 3px;
+  border-radius: 999px;
   color: var(--muted);
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 800;
+}
+
+.smoking-emoji {
+  font-size: 15px;
+  line-height: 1;
 }
 
 .smoking-nonSmoking {

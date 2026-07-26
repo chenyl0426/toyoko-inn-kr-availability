@@ -55,6 +55,8 @@ export const zhCN = {
   results: {
     title: "查询结果",
     live: "实时",
+    hasRoom: "有房",
+    noRoom: "无房",
     completed: "已完成 {done} / 共 {total} 家",
     startedAt: "开始于 {time}（韩国时间）",
     totalDuration: "全部完成，用时 {seconds} 秒",

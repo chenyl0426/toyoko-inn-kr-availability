@@ -12,6 +12,7 @@ import type {
   RoomOffer,
   SearchCriteria,
   SmokingPreference,
+  SmokingType,
   UiHotelState,
 } from "@/lib/types";
 
@@ -22,6 +23,24 @@ const HISTORY_KEY = "toyoko-korea-search-history-v1";
 const MAX_HISTORY = 10;
 const MAX_CONCURRENCY = 3;
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+const SMOKING_EMOJI: Record<SmokingType, string> = {
+  nonSmoking: "🚭",
+  smoking: "🚬",
+  unknown: "❓",
+};
+
+function historySignature(item: HistoryCriteria) {
+  return [
+    item.regionId,
+    item.checkIn,
+    item.checkOut,
+    item.adultsPerRoom,
+    item.roomCount,
+    item.smokingPreference,
+    item.locale,
+  ].join("|");
+}
 
 function isValidDate(date: string) {
   if (!ISO_DATE_PATTERN.test(date)) return false;
@@ -285,6 +304,9 @@ function RoomGroup({ group }: { group: RoomGroupData }) {
           <div className="offer-title-line">
             <h4>{room.roomTypeZh}</h4>
             <span className={`smoking-tag smoking-${room.smokingType}`}>
+              <span className="smoking-emoji" aria-hidden="true">
+                {SMOKING_EMOJI[room.smokingType]}
+              </span>
               {c.smoking[room.smokingType]}
             </span>
           </div>
@@ -488,8 +510,15 @@ export default function Home() {
           localStorage.getItem(HISTORY_KEY) ?? "[]",
         ) as HistoryCriteria[];
         if (Array.isArray(stored)) {
-          setHistory(stored.slice(0, MAX_HISTORY));
-          if (stored[0]?.regionId) setRegionId(stored[0].regionId);
+          const seen = new Set<string>();
+          const deduped = stored.filter((item) => {
+            const signature = historySignature(item);
+            if (seen.has(signature)) return false;
+            seen.add(signature);
+            return true;
+          });
+          setHistory(deduped.slice(0, MAX_HISTORY));
+          if (deduped[0]?.regionId) setRegionId(deduped[0].regionId);
         }
       } catch {
         localStorage.removeItem(HISTORY_KEY);
@@ -507,6 +536,13 @@ export default function Home() {
     (state) =>
       state.phase === "completed" && state.result.status === "failed",
   ).length;
+  const availableCount = hotelStates.filter(
+    (state) =>
+      state.phase === "completed" &&
+      state.result.status === "available" &&
+      state.visibleOffers.length > 0,
+  ).length;
+  const hasAvailable = availableCount > 0;
 
   const visibleHotelStates = useMemo(() => {
     if (resultView === "all") return hotelStates;
@@ -564,10 +600,10 @@ export default function Home() {
       smokingPreference: criteria.smokingPreference,
       locale: criteria.locale,
     };
-    const signature = JSON.stringify(value);
+    const signature = historySignature(value);
     const next = [
       value,
-      ...history.filter((item) => JSON.stringify(item) !== signature),
+      ...history.filter((item) => historySignature(item) !== signature),
     ].slice(0, MAX_HISTORY);
     setHistory(next);
     localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
@@ -930,13 +966,13 @@ export default function Home() {
           <p className="history-empty">{c.noHistory}</p>
         ) : (
           <div className="history-list">
-            {history.map((item, index) => (
+            {history.map((item) => (
               <button
                 type="button"
                 className="history-chip"
                 onClick={() => applyHistory(item)}
                 aria-label={c.history.use}
-                key={`${JSON.stringify(item)}-${index}`}
+                key={historySignature(item)}
               >
                 <strong>
                   {
@@ -963,6 +999,15 @@ export default function Home() {
               <div className="results-title-line">
                 <p className="eyebrow">{c.results.live}</p>
                 <h2>{c.results.title}</h2>
+                <span
+                  className={`availability-banner ${
+                    hasAvailable ? "is-available" : "is-none"
+                  }`}
+                  aria-live="polite"
+                >
+                  <span className="availability-dot" aria-hidden="true" />
+                  {hasAvailable ? c.results.hasRoom : c.results.noRoom}
+                </span>
               </div>
               <p className="criteria-summary">
                 {
