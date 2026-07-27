@@ -12,6 +12,7 @@ import type {
   RoomOffer,
   SearchCriteria,
   SmokingPreference,
+  SmokingType,
   UiHotelState,
 } from "@/lib/types";
 
@@ -22,6 +23,47 @@ const HISTORY_KEY = "toyoko-korea-search-history-v1";
 const MAX_HISTORY = 10;
 const MAX_CONCURRENCY = 3;
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+const SMOKING_EMOJI: Record<SmokingType, string> = {
+  nonSmoking: "🚭",
+  smoking: "🚬",
+  unknown: "❓",
+};
+
+function historySignature(item: HistoryCriteria) {
+  return [
+    item.regionId,
+    item.checkIn,
+    item.checkOut,
+    item.adultsPerRoom,
+    item.roomCount,
+    item.smokingPreference,
+    item.locale,
+  ].join("|");
+}
+
+function isHistoryCriteria(value: unknown): value is HistoryCriteria {
+  if (!value || typeof value !== "object") return false;
+  const item = value as Partial<HistoryCriteria>;
+  return (
+    REGION_OPTIONS.some((region) => region.id === item.regionId) &&
+    typeof item.checkIn === "string" &&
+    typeof item.checkOut === "string" &&
+    isValidDate(item.checkIn) &&
+    isValidDate(item.checkOut) &&
+    item.checkOut > item.checkIn &&
+    Number.isInteger(item.adultsPerRoom) &&
+    item.adultsPerRoom! >= FORM_LIMITS.adultsPerRoom.min &&
+    item.adultsPerRoom! <= FORM_LIMITS.adultsPerRoom.max &&
+    Number.isInteger(item.roomCount) &&
+    item.roomCount! >= FORM_LIMITS.roomCount.min &&
+    item.roomCount! <= FORM_LIMITS.roomCount.max &&
+    ["any", "nonSmokingPreferred", "smokingOnly"].includes(
+      item.smokingPreference ?? "",
+    ) &&
+    item.locale === "zh-CN"
+  );
+}
 
 function isValidDate(date: string) {
   if (!ISO_DATE_PATTERN.test(date)) return false;
@@ -156,6 +198,19 @@ function toCompletedState(
   };
 }
 
+function unknownFailure(hotel: Hotel): HotelAvailability {
+  return {
+    hotelCode: hotel.hotelCode,
+    status: "failed",
+    offers: [],
+    sourceQueriedAt: new Date().toISOString(),
+    durationMs: 0,
+    errorType: "unknown",
+    sourceUrl: hotel.officialDetailUrl,
+    message: c.errors.unknown,
+  };
+}
+
 function statusText(errorType: ErrorType | null) {
   return errorType ? c.errors[errorType] : c.hotel.failed;
 }
@@ -207,6 +262,8 @@ function RoomImage({ offer }: { offer: RoomOffer }) {
       className="room-image"
       src={offer.roomImageUrl}
       alt={`${offer.roomTypeZh}官网图片`}
+      width={800}
+      height={500}
       loading="lazy"
       referrerPolicy="no-referrer"
       onError={() => setHasError(true)}
@@ -285,6 +342,9 @@ function RoomGroup({ group }: { group: RoomGroupData }) {
           <div className="offer-title-line">
             <h4>{room.roomTypeZh}</h4>
             <span className={`smoking-tag smoking-${room.smokingType}`}>
+              <span className="smoking-emoji" aria-hidden="true">
+                {SMOKING_EMOJI[room.smokingType]}
+              </span>
               {c.smoking[room.smokingType]}
             </span>
           </div>
@@ -344,7 +404,7 @@ function HotelCard({
 
       {state.phase !== "completed" ? (
         <div className="hotel-loading" aria-live="polite">
-          <span className="loader-dot" />
+          <span className="loader-dot" aria-hidden="true" />
           <div>
             <strong>
               {state.phase === "waiting"
@@ -484,15 +544,26 @@ export default function Home() {
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
       try {
-        const stored = JSON.parse(
+        const stored: unknown = JSON.parse(
           localStorage.getItem(HISTORY_KEY) ?? "[]",
-        ) as HistoryCriteria[];
+        );
         if (Array.isArray(stored)) {
-          setHistory(stored.slice(0, MAX_HISTORY));
-          if (stored[0]?.regionId) setRegionId(stored[0].regionId);
+          const seen = new Set<string>();
+          const deduped = stored.filter(isHistoryCriteria).filter((item) => {
+            const signature = historySignature(item);
+            if (seen.has(signature)) return false;
+            seen.add(signature);
+            return true;
+          });
+          setHistory(deduped.slice(0, MAX_HISTORY));
+          if (deduped[0]?.regionId) setRegionId(deduped[0].regionId);
         }
       } catch {
-        localStorage.removeItem(HISTORY_KEY);
+        try {
+          localStorage.removeItem(HISTORY_KEY);
+        } catch {
+          // Search history is optional when browser storage is unavailable.
+        }
       }
     });
     return () => cancelAnimationFrame(frame);
@@ -507,6 +578,22 @@ export default function Home() {
     (state) =>
       state.phase === "completed" && state.result.status === "failed",
   ).length;
+  const availableCount = hotelStates.filter(
+    (state) =>
+      state.phase === "completed" &&
+      state.result.status === "available" &&
+      state.visibleOffers.length > 0,
+  ).length;
+  const hasAvailable = availableCount > 0;
+  const allCompleted =
+    hotelStates.length > 0 && completedCount === hotelStates.length;
+  const availabilityState = !allCompleted
+    ? { className: "is-pending", label: c.results.searching }
+    : hasAvailable
+      ? { className: "is-available", label: c.results.hasRoom }
+      : failedCount > 0
+        ? { className: "is-warning", label: c.results.incomplete }
+        : { className: "is-none", label: c.results.noRoom };
 
   const visibleHotelStates = useMemo(() => {
     if (resultView === "all") return hotelStates;
@@ -535,7 +622,7 @@ export default function Home() {
 
   function validate(criteria: SearchCriteria) {
     if (
-      !criteria.regionId ||
+      !REGION_OPTIONS.some((region) => region.id === criteria.regionId) ||
       !criteria.checkIn ||
       !criteria.checkOut ||
       !criteria.adultsPerRoom ||
@@ -551,6 +638,16 @@ export default function Home() {
     }
     if (criteria.checkIn < koreaToday()) return c.form.checkInPast;
     if (criteria.checkOut <= criteria.checkIn) return c.form.invalidCheckOut;
+    if (
+      !Number.isInteger(criteria.adultsPerRoom) ||
+      criteria.adultsPerRoom < FORM_LIMITS.adultsPerRoom.min ||
+      criteria.adultsPerRoom > FORM_LIMITS.adultsPerRoom.max ||
+      !Number.isInteger(criteria.roomCount) ||
+      criteria.roomCount < FORM_LIMITS.roomCount.min ||
+      criteria.roomCount > FORM_LIMITS.roomCount.max
+    ) {
+      return c.form.required;
+    }
     return "";
   }
 
@@ -564,13 +661,17 @@ export default function Home() {
       smokingPreference: criteria.smokingPreference,
       locale: criteria.locale,
     };
-    const signature = JSON.stringify(value);
+    const signature = historySignature(value);
     const next = [
       value,
-      ...history.filter((item) => JSON.stringify(item) !== signature),
+      ...history.filter((item) => historySignature(item) !== signature),
     ].slice(0, MAX_HISTORY);
     setHistory(next);
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+    try {
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+    } catch {
+      // Search history is optional when browser storage is unavailable.
+    }
   }
 
   async function fetchHotel(
@@ -633,16 +734,7 @@ export default function Home() {
         try {
           result = await fetchHotel(hotel, criteria);
         } catch {
-          result = {
-            hotelCode: hotel.hotelCode,
-            status: "failed",
-            offers: [],
-            sourceQueriedAt: new Date().toISOString(),
-            durationMs: 0,
-            errorType: "unknown",
-            sourceUrl: hotel.officialDetailUrl,
-            message: c.errors.unknown,
-          };
+          result = unknownFailure(hotel);
         }
         collected.push(result);
         setHotelStates((states) =>
@@ -695,10 +787,15 @@ export default function Home() {
     );
 
     try {
-      const result = await fetchHotel(hotel, {
-        ...queryCriteria,
-        requestedAt: new Date().toISOString(),
-      });
+      let result: HotelAvailability;
+      try {
+        result = await fetchHotel(hotel, {
+          ...queryCriteria,
+          requestedAt: new Date().toISOString(),
+        });
+      } catch {
+        result = unknownFailure(hotel);
+      }
       setHotelStates((states) => {
         const next = states.map((state) =>
           state.hotel.hotelCode === hotel.hotelCode
@@ -743,7 +840,11 @@ export default function Home() {
 
   function clearHistory() {
     setHistory([]);
-    localStorage.removeItem(HISTORY_KEY);
+    try {
+      localStorage.removeItem(HISTORY_KEY);
+    } catch {
+      // The in-memory history is still cleared.
+    }
   }
 
   return (
@@ -754,7 +855,7 @@ export default function Home() {
           <span>{c.brand}</span>
         </a>
         <div className="header-note">
-          <span className="live-dot" />
+          <span className="live-dot" aria-hidden="true" />
           {c.unofficial}
         </div>
       </header>
@@ -784,6 +885,7 @@ export default function Home() {
               <label className="field field-region">
                 <span>{c.fields.region}</span>
                 <select
+                  name="region"
                   value={regionId}
                   onChange={(event) =>
                     setRegionId(event.target.value as RegionId)
@@ -813,6 +915,7 @@ export default function Home() {
               <label className="field">
                 <span>{c.fields.adultsPerRoom}</span>
                 <select
+                  name="adultsPerRoom"
                   value={adultsPerRoom}
                   onChange={(event) =>
                     setAdultsPerRoom(Number(event.target.value))
@@ -837,6 +940,7 @@ export default function Home() {
               <label className="field">
                 <span>{c.fields.roomCount}</span>
                 <select
+                  name="roomCount"
                   value={roomCount}
                   onChange={(event) =>
                     setRoomCount(Number(event.target.value))
@@ -930,13 +1034,13 @@ export default function Home() {
           <p className="history-empty">{c.noHistory}</p>
         ) : (
           <div className="history-list">
-            {history.map((item, index) => (
+            {history.map((item) => (
               <button
                 type="button"
                 className="history-chip"
                 onClick={() => applyHistory(item)}
                 aria-label={c.history.use}
-                key={`${JSON.stringify(item)}-${index}`}
+                key={historySignature(item)}
               >
                 <strong>
                   {
@@ -963,6 +1067,13 @@ export default function Home() {
               <div className="results-title-line">
                 <p className="eyebrow">{c.results.live}</p>
                 <h2>{c.results.title}</h2>
+                <span
+                  className={`availability-banner ${availabilityState.className}`}
+                  aria-live="polite"
+                >
+                  <span className="availability-dot" aria-hidden="true" />
+                  {availabilityState.label}
+                </span>
               </div>
               <p className="criteria-summary">
                 {
@@ -1089,7 +1200,9 @@ export default function Home() {
           </div>
 
           <div className="source-note">
-            <span className="source-note-mark">i</span>
+            <span className="source-note-mark" aria-hidden="true">
+              i
+            </span>
             <div>
               <strong>{c.liveData}</strong>
               <p>{c.officialReminder}</p>

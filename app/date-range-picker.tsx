@@ -237,6 +237,7 @@ export function DateRangePicker({
           >
             <input
               id={checkInId}
+              name="checkIn"
               type="text"
               inputMode="numeric"
               autoComplete="off"
@@ -264,6 +265,7 @@ export function DateRangePicker({
           >
             <input
               id={checkOutId}
+              name="checkOut"
               type="text"
               inputMode="numeric"
               autoComplete="off"
