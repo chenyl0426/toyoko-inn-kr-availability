@@ -9,9 +9,6 @@
 ## 데모
 
 - Vercel: [toyoko-inn-korea-availability.vercel.app](https://toyoko-inn-korea-availability.vercel.app)
-- ChatGPT Page: [toyoko-korea-rooms.xiongmiao2004.chatgpt.site](https://toyoko-korea-rooms.xiongmiao2004.chatgpt.site)
-
-> 위 주소는 배포용 자리표시자입니다. 공개 후 실제 운영 URL로 교체하세요.
 
 ## 주요 기능
 
