@@ -12,7 +12,6 @@ import type {
   RoomOffer,
   SearchCriteria,
   SmokingPreference,
-  SmokingType,
   UiHotelState,
 } from "@/lib/types";
 
@@ -23,12 +22,6 @@ const HISTORY_KEY = "toyoko-korea-search-history-v1";
 const MAX_HISTORY = 10;
 const MAX_CONCURRENCY = 3;
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-
-const SMOKING_EMOJI: Record<SmokingType, string> = {
-  nonSmoking: "🚭",
-  smoking: "🚬",
-  unknown: "❓",
-};
 
 function historySignature(item: HistoryCriteria) {
   return [
@@ -261,7 +254,7 @@ function RoomImage({ offer }: { offer: RoomOffer }) {
     <img
       className="room-image"
       src={offer.roomImageUrl}
-      alt={`${offer.roomTypeZh}官网图片`}
+      alt={`${offer.roomTypeZh || offer.roomTypeSource}官网图片`}
       width={800}
       height={500}
       loading="lazy"
@@ -342,9 +335,6 @@ function RoomGroup({ group }: { group: RoomGroupData }) {
           <div className="offer-title-line">
             <h4>{room.roomTypeZh}</h4>
             <span className={`smoking-tag smoking-${room.smokingType}`}>
-              <span className="smoking-emoji" aria-hidden="true">
-                {SMOKING_EMOJI[room.smokingType]}
-              </span>
               {c.smoking[room.smokingType]}
             </span>
           </div>
@@ -379,7 +369,10 @@ function HotelCard({
   const roomGroups =
     state.phase === "completed" ? groupOffers(state.visibleOffers) : [];
   return (
-    <section className="hotel-card">
+    <section
+      className="hotel-card"
+      aria-labelledby={`hotel-${hotel.hotelCode}`}
+    >
       <div className="hotel-card-header">
         <div>
           <div className="hotel-location">
@@ -389,7 +382,7 @@ function HotelCard({
               {c.hotel.code} {hotel.hotelCode}
             </span>
           </div>
-          <h3>{hotel.nameZh}</h3>
+          <h3 id={`hotel-${hotel.hotelCode}`}>{hotel.nameZh}</h3>
           <p>{hotel.nameSource}</p>
         </div>
         <a
@@ -569,6 +562,58 @@ export default function Home() {
     return () => cancelAnimationFrame(frame);
   }, []);
 
+  useEffect(() => {
+    const timers = new Set<number>();
+    const rippleSelector =
+      ".button, .edit-fab, .history-chip, .view-tabs button, .text-button";
+
+    const startRipple = (control: HTMLElement, x: number, y: number) => {
+      const rect = control.getBoundingClientRect();
+      const radius = Math.hypot(
+        Math.max(x, rect.width - x),
+        Math.max(y, rect.height - y),
+      );
+      control.style.setProperty("--ripple-x", `${x}px`);
+      control.style.setProperty("--ripple-y", `${y}px`);
+      control.style.setProperty("--ripple-scale", String(radius / 6));
+      control.classList.remove("is-rippling");
+      void control.offsetWidth;
+      control.classList.add("is-rippling");
+      const timer = window.setTimeout(() => {
+        control.classList.remove("is-rippling");
+        timers.delete(timer);
+      }, 560);
+      timers.add(timer);
+    };
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const control = (event.target as Element).closest<HTMLElement>(
+        rippleSelector,
+      );
+      if (!control || control.matches(":disabled")) return;
+      const rect = control.getBoundingClientRect();
+      startRipple(control, event.clientX - rect.left, event.clientY - rect.top);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      const control = (event.target as Element).closest<HTMLElement>(
+        rippleSelector,
+      );
+      if (!control || control.matches(":disabled")) return;
+      const rect = control.getBoundingClientRect();
+      startRipple(control, rect.width / 2, rect.height / 2);
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+      timers.forEach((timer) => window.clearTimeout(timer));
+    };
+  }, []);
+
   const nights = nightsBetween(checkIn, checkOut);
   const totalAdults = adultsPerRoom * roomCount;
   const completedCount = hotelStates.filter(
@@ -578,22 +623,49 @@ export default function Home() {
     (state) =>
       state.phase === "completed" && state.result.status === "failed",
   ).length;
-  const availableCount = hotelStates.filter(
+  const sourceAvailableCount = hotelStates.filter(
+    (state) =>
+      state.phase === "completed" &&
+      state.result.status === "available",
+  ).length;
+  const matchingAvailableCount = hotelStates.filter(
     (state) =>
       state.phase === "completed" &&
       state.result.status === "available" &&
       state.visibleOffers.length > 0,
   ).length;
-  const hasAvailable = availableCount > 0;
   const allCompleted =
     hotelStates.length > 0 && completedCount === hotelStates.length;
   const availabilityState = !allCompleted
     ? { className: "is-pending", label: c.results.searching }
-    : hasAvailable
+    : matchingAvailableCount > 0
       ? { className: "is-available", label: c.results.hasRoom }
+      : sourceAvailableCount > 0
+        ? { className: "is-warning", label: c.results.noPreferenceMatch }
       : failedCount > 0
         ? { className: "is-warning", label: c.results.incomplete }
         : { className: "is-none", label: c.results.noRoom };
+
+  const showFieldErrors = Boolean(formError);
+  const regionInvalid =
+    showFieldErrors &&
+    !REGION_OPTIONS.some((region) => region.id === regionId);
+  const checkInInvalid =
+    showFieldErrors &&
+    (!isValidDate(checkIn) || checkIn < koreaToday());
+  const checkOutInvalid =
+    showFieldErrors &&
+    (!isValidDate(checkOut) || checkOut <= checkIn);
+  const adultsInvalid =
+    showFieldErrors &&
+    (!Number.isInteger(adultsPerRoom) ||
+      adultsPerRoom < FORM_LIMITS.adultsPerRoom.min ||
+      adultsPerRoom > FORM_LIMITS.adultsPerRoom.max);
+  const roomsInvalid =
+    showFieldErrors &&
+    (!Number.isInteger(roomCount) ||
+      roomCount < FORM_LIMITS.roomCount.min ||
+      roomCount > FORM_LIMITS.roomCount.max);
 
   const visibleHotelStates = useMemo(() => {
     if (resultView === "all") return hotelStates;
@@ -750,19 +822,6 @@ export default function Home() {
     await Promise.all(
       Array.from({ length: Math.min(MAX_CONCURRENCY, hotels.length) }, worker),
     );
-    setHotelStates((states) =>
-      states
-        .map((state, index) => ({ state, index }))
-        .sort((a, b) => {
-          const rank = (item: UiHotelState) =>
-            item.phase === "completed" &&
-            item.result.status === "available"
-              ? 0
-              : 1;
-          return rank(a.state) - rank(b.state) || a.index - b.index;
-        })
-        .map(({ state }) => state),
-    );
     setTotalDuration(Date.now() - startedAt);
     setIsRunning(false);
     if (collected.some((result) => result.status !== "failed")) {
@@ -797,7 +856,7 @@ export default function Home() {
         result = unknownFailure(hotel);
       }
       setHotelStates((states) => {
-        const next = states.map((state) =>
+        return states.map((state) =>
           state.hotel.hotelCode === hotel.hotelCode
             ? toCompletedState(
                 hotel,
@@ -806,17 +865,6 @@ export default function Home() {
               )
             : state,
         );
-        return next
-          .map((state, index) => ({ state, index }))
-          .sort((a, b) => {
-            const rank = (item: UiHotelState) =>
-              item.phase === "completed" &&
-              item.result.status === "available"
-                ? 0
-                : 1;
-            return rank(a.state) - rank(b.state) || a.index - b.index;
-          })
-          .map(({ state }) => state);
       });
     } finally {
       setRetryingCodes((codes) => {
@@ -847,12 +895,25 @@ export default function Home() {
     }
   }
 
+  function scrollToSearchForm() {
+    formRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+  }
+
   return (
-    <main>
+    <>
+      <a className="skip-link" href="#search-form">
+        {c.skipToSearch}
+      </a>
       <header className="site-header">
         <a href="#" className="wordmark" aria-label={c.productName}>
           <span className="wordmark-mark">韩</span>
-          <span>{c.brand}</span>
+          <span className="wordmark-copy">
+            <strong>{c.brand}</strong>
+            <small>{c.brandUtility}</small>
+          </span>
         </a>
         <div className="header-note">
           <span className="live-dot" aria-hidden="true" />
@@ -860,32 +921,60 @@ export default function Home() {
         </div>
       </header>
 
-      <section className="hero">
-        <div className="hero-copy">
-          <p className="eyebrow">{c.heroEyebrow}</p>
-          <h1>{c.heroTitle}</h1>
-          <p className="hero-description">{c.heroDescription}</p>
-          <div className="trust-row">
-            <span>✓ {c.liveData}</span>
-            <span>✓ {c.unofficial}</span>
-          </div>
-        </div>
+      <main id="main-content">
+        <section className="hero">
+          <div className="hero-copy">
+            <p className="eyebrow">{c.heroEyebrow}</p>
+            <h1>{c.heroTitle}</h1>
+            <p className="hero-description">{c.heroDescription}</p>
 
-        <div className="search-shell" ref={formRef}>
+            <div className="city-route" aria-label={c.supportedRegions}>
+              {REGION_OPTIONS.filter((region) => region.id !== "all").map(
+                (region) => (
+                  <span className="route-stop" key={region.id}>
+                    <span aria-hidden="true" />
+                    {region.label}
+                  </span>
+                ),
+              )}
+            </div>
+
+            <div className="trust-row">
+              <span>✓ {c.liveData}</span>
+              <span>✓ {c.unofficial}</span>
+            </div>
+          </div>
+
+        <div
+          className="search-shell"
+          id="search-form"
+          ref={formRef}
+          tabIndex={-1}
+        >
           <div className="search-shell-heading">
             <div>
-              <span>SEARCH</span>
+              <span className="surface-label">
+                <span className="live-dot" aria-hidden="true" />
+                {c.results.live}
+              </span>
               <h2>{c.form.title}</h2>
             </div>
             <p>{c.form.subtitle}</p>
           </div>
 
-          <form onSubmit={handleSubmit} noValidate>
+          <form
+            onSubmit={handleSubmit}
+            noValidate
+            aria-describedby={formError ? "search-form-error" : undefined}
+          >
             <div className="form-grid">
               <label className="field field-region">
                 <span>{c.fields.region}</span>
                 <select
                   name="region"
+                  required
+                  aria-invalid={regionInvalid}
+                  aria-describedby={formError ? "search-form-error" : undefined}
                   value={regionId}
                   onChange={(event) =>
                     setRegionId(event.target.value as RegionId)
@@ -903,6 +992,9 @@ export default function Home() {
                 checkIn={checkIn}
                 checkOut={checkOut}
                 minDate={koreaToday()}
+                checkInInvalid={checkInInvalid}
+                checkOutInvalid={checkOutInvalid}
+                describedBy={formError ? "search-form-error" : undefined}
                 onCheckInChange={setCheckIn}
                 onCheckOutChange={setCheckOut}
               />
@@ -916,6 +1008,9 @@ export default function Home() {
                 <span>{c.fields.adultsPerRoom}</span>
                 <select
                   name="adultsPerRoom"
+                  required
+                  aria-invalid={adultsInvalid}
+                  aria-describedby={formError ? "search-form-error" : undefined}
                   value={adultsPerRoom}
                   onChange={(event) =>
                     setAdultsPerRoom(Number(event.target.value))
@@ -941,6 +1036,9 @@ export default function Home() {
                 <span>{c.fields.roomCount}</span>
                 <select
                   name="roomCount"
+                  required
+                  aria-invalid={roomsInvalid}
+                  aria-describedby={formError ? "search-form-error" : undefined}
                   value={roomCount}
                   onChange={(event) =>
                     setRoomCount(Number(event.target.value))
@@ -1002,7 +1100,7 @@ export default function Home() {
               <p className="all-notice">{c.allLongNotice}</p>
             )}
             {formError && (
-              <p className="form-error" role="alert">
+              <p className="form-error" id="search-form-error" role="alert">
                 {formError}
               </p>
             )}
@@ -1019,7 +1117,7 @@ export default function Home() {
             </button>
           </form>
         </div>
-      </section>
+        </section>
 
       <section className="history-section" aria-labelledby="history-title">
         <div className="section-heading-inline">
@@ -1039,7 +1137,6 @@ export default function Home() {
                 type="button"
                 className="history-chip"
                 onClick={() => applyHistory(item)}
-                aria-label={c.history.use}
                 key={historySignature(item)}
               >
                 <strong>
@@ -1099,12 +1196,7 @@ export default function Home() {
             <button
               type="button"
               className="button button-secondary"
-              onClick={() =>
-                formRef.current?.scrollIntoView({
-                  behavior: "smooth",
-                  block: "center",
-                })
-              }
+              onClick={scrollToSearchForm}
             >
               {c.editCriteria}
             </button>
@@ -1155,12 +1247,11 @@ export default function Home() {
           )}
 
           <div className="result-controls">
-            <div className="view-tabs" role="tablist" aria-label={c.results.title}>
+            <div className="view-tabs" aria-label={c.results.title}>
               {(["all", "available", "failed"] as ResultView[]).map((view) => (
                 <button
                   type="button"
-                  role="tab"
-                  aria-selected={resultView === view}
+                  aria-pressed={resultView === view}
                   className={resultView === view ? "is-active" : ""}
                   onClick={() => setResultView(view)}
                   key={view}
@@ -1211,6 +1302,8 @@ export default function Home() {
         </section>
       )}
 
+      </main>
+
       <footer>
         <div>
           <span className="wordmark-mark">韩</span>
@@ -1221,6 +1314,17 @@ export default function Home() {
         </div>
         <span>{c.footer.personal}</span>
       </footer>
-    </main>
+
+      {queryCriteria && (
+        <button
+          type="button"
+          className="edit-fab"
+          onClick={scrollToSearchForm}
+        >
+          <span aria-hidden="true">↑</span>
+          {c.editCriteria}
+        </button>
+      )}
+    </>
   );
 }

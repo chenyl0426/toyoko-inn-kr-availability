@@ -1,6 +1,9 @@
 export const zhCN = {
   brand: "韩国东横INN房况查询",
+  brandUtility: "KOREA STAY FINDER",
   productName: "韩国东横INN房况查询",
+  skipToSearch: "跳到查询条件",
+  supportedRegions: "支持查询的韩国地区",
   heroEyebrow: "13 家酒店 · 7 座城市 · 一次查询",
   heroTitle: "把逐家查房，变成一次比较。",
   heroDescription:
@@ -50,7 +53,6 @@ export const zhCN = {
   },
   history: {
     title: "最近使用",
-    use: "使用这组条件",
   },
   results: {
     title: "查询结果",
@@ -58,6 +60,7 @@ export const zhCN = {
     searching: "查询中",
     hasRoom: "有房",
     noRoom: "无房",
+    noPreferenceMatch: "有房，偏好无匹配",
     incomplete: "结果不完整",
     completed: "已完成 {done} / 共 {total} 家",
     startedAt: "开始于 {time}（韩国时间）",

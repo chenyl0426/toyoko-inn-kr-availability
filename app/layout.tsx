@@ -1,10 +1,15 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import "./globals.css";
 
 const title = "韩国东横INN房况查询";
 const description =
   "一次查询韩国同城全部东横 INN 的实时余房、房型、住宿计划和官网价格。";
+
+export const viewport: Viewport = {
+  colorScheme: "light",
+  themeColor: "#f7f9ff",
+};
 
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();
@@ -20,7 +25,7 @@ export async function generateMetadata(): Promise<Metadata> {
       ? "http"
       : "https";
   const origin = `${protocol}://${host}`;
-  const previewImage = new URL("/og.png", origin).toString();
+  const previewImage = new URL("/og-material.png", origin).toString();
 
   return {
     title,

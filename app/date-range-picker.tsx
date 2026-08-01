@@ -8,6 +8,9 @@ type DateRangePickerProps = {
   checkIn: string;
   checkOut: string;
   minDate: string;
+  checkInInvalid?: boolean;
+  checkOutInvalid?: boolean;
+  describedBy?: string;
   onCheckInChange: (value: string) => void;
   onCheckOutChange: (value: string) => void;
 };
@@ -81,7 +84,10 @@ function CalendarMonth({
   checkIn,
   checkOut,
   minDate,
+  focusedDate,
   onSelect,
+  onFocusDate,
+  onNavigate,
   secondary = false,
 }: {
   month: string;
@@ -89,7 +95,10 @@ function CalendarMonth({
   checkIn: string;
   checkOut: string;
   minDate: string;
+  focusedDate: string;
   onSelect: (value: string) => void;
+  onFocusDate: (value: string) => void;
+  onNavigate: (value: string) => void;
   secondary?: boolean;
 }) {
   const currentMonth = month.slice(0, 7);
@@ -120,6 +129,7 @@ function CalendarMonth({
           const isDisabled =
             date < minDate ||
             (activeField === "checkOut" && validCheckIn && date <= checkIn);
+          const isFocusable = !isOutsideMonth && date === focusedDate;
 
           return (
             <button
@@ -133,10 +143,41 @@ function CalendarMonth({
               ]
                 .filter(Boolean)
                 .join(" ")}
-              disabled={isDisabled}
+              data-date={date}
+              disabled={isDisabled || isOutsideMonth}
+              tabIndex={isFocusable ? 0 : -1}
               onClick={() => onSelect(date)}
+              onFocus={() => onFocusDate(date)}
+              onKeyDown={(event) => {
+                const moves: Partial<Record<typeof event.key, number>> = {
+                  ArrowLeft: -1,
+                  ArrowRight: 1,
+                  ArrowUp: -7,
+                  ArrowDown: 7,
+                };
+                const offset = moves[event.key];
+                if (offset !== undefined) {
+                  event.preventDefault();
+                  onNavigate(addDays(date, offset));
+                  return;
+                }
+                if (event.key === "Home" || event.key === "End") {
+                  event.preventDefault();
+                  const weekdayOffset =
+                    (new Date(`${date}T00:00:00Z`).getUTCDay() + 6) % 7;
+                  onNavigate(
+                    addDays(
+                      date,
+                      event.key === "Home"
+                        ? -weekdayOffset
+                        : 6 - weekdayOffset,
+                    ),
+                  );
+                }
+              }}
               aria-label={fullDateLabel(date)}
               aria-pressed={isStart || isEnd}
+              aria-hidden={isOutsideMonth || undefined}
               key={date}
             >
               {Number(date.slice(8, 10))}
@@ -152,6 +193,9 @@ export function DateRangePicker({
   checkIn,
   checkOut,
   minDate,
+  checkInInvalid = false,
+  checkOutInvalid = false,
+  describedBy,
   onCheckInChange,
   onCheckOutChange,
 }: DateRangePickerProps) {
@@ -160,7 +204,13 @@ export function DateRangePicker({
   const [visibleMonth, setVisibleMonth] = useState(() =>
     startOfMonth(isValidDate(checkIn) ? checkIn : minDate),
   );
+  const [focusedDate, setFocusedDate] = useState(() =>
+    isValidDate(checkIn) ? checkIn : minDate,
+  );
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const checkInRef = useRef<HTMLInputElement>(null);
+  const checkOutRef = useRef<HTMLInputElement>(null);
+  const suppressFocusOpenRef = useRef(false);
   const checkInId = useId();
   const checkOutId = useId();
   const panelId = useId();
@@ -174,7 +224,19 @@ export function DateRangePicker({
       }
     };
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setIsOpen(false);
+      if (event.key === "Escape") {
+        setIsOpen(false);
+        requestAnimationFrame(() => {
+          suppressFocusOpenRef.current = true;
+          (activeField === "checkIn"
+            ? checkInRef.current
+            : checkOutRef.current
+          )?.focus();
+          requestAnimationFrame(() => {
+            suppressFocusOpenRef.current = false;
+          });
+        });
+      }
     };
 
     document.addEventListener("pointerdown", closeOnOutsideClick);
@@ -183,7 +245,58 @@ export function DateRangePicker({
       document.removeEventListener("pointerdown", closeOnOutsideClick);
       document.removeEventListener("keydown", closeOnEscape);
     };
-  }, [isOpen]);
+  }, [activeField, isOpen]);
+
+  function focusCalendarDate(value: string) {
+    const earliestSelectable =
+      activeField === "checkOut" && isValidDate(checkIn)
+        ? addDays(checkIn, 1)
+        : minDate;
+    const target = value < earliestSelectable ? earliestSelectable : value;
+    const targetMonth = startOfMonth(target);
+    const isSingleMonth = window.matchMedia("(max-width: 680px)").matches;
+    const lastVisibleMonth = isSingleMonth
+      ? visibleMonth
+      : addMonths(visibleMonth, 1);
+    if (targetMonth < visibleMonth) {
+      setVisibleMonth(targetMonth);
+    } else if (targetMonth > lastVisibleMonth) {
+      setVisibleMonth(
+        isSingleMonth ? targetMonth : addMonths(targetMonth, -1),
+      );
+    }
+    setFocusedDate(target);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        wrapperRef.current
+          ?.querySelector<HTMLButtonElement>(
+            `.calendar-day[data-date="${target}"]:not(:disabled)`,
+          )
+          ?.focus();
+      });
+    });
+  }
+
+  function moveCalendarView(amount: number) {
+    const nextMonth = addMonths(visibleMonth, amount);
+    const earliestSelectable =
+      activeField === "checkOut" && isValidDate(checkIn)
+        ? addDays(checkIn, 1)
+        : minDate;
+    const nextFocus =
+      nextMonth < earliestSelectable ? earliestSelectable : nextMonth;
+    setVisibleMonth(nextMonth);
+    setFocusedDate(nextFocus);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        wrapperRef.current
+          ?.querySelector<HTMLButtonElement>(
+            `.calendar-day[data-date="${nextFocus}"]:not(:disabled)`,
+          )
+          ?.focus();
+      });
+    });
+  }
 
   function openFor(field: ActiveField) {
     setActiveField(field);
@@ -191,9 +304,12 @@ export function DateRangePicker({
       field === "checkOut" && isValidDate(checkOut)
         ? checkOut
         : isValidDate(checkIn)
-          ? checkIn
+          ? field === "checkOut"
+            ? addDays(checkIn, 1)
+            : checkIn
           : minDate;
     setVisibleMonth(startOfMonth(preferredDate));
+    setFocusedDate(preferredDate);
     setIsOpen(true);
   }
 
@@ -205,6 +321,7 @@ export function DateRangePicker({
       onCheckInChange(value);
       onCheckOutChange("");
       setActiveField("checkOut");
+      focusCalendarDate(addDays(value, 1));
       return;
     }
 
@@ -217,6 +334,13 @@ export function DateRangePicker({
 
     onCheckOutChange(value);
     setIsOpen(false);
+    requestAnimationFrame(() => {
+      suppressFocusOpenRef.current = true;
+      checkOutRef.current?.focus();
+      requestAnimationFrame(() => {
+        suppressFocusOpenRef.current = false;
+      });
+    });
   }
 
   function resetRange() {
@@ -224,6 +348,7 @@ export function DateRangePicker({
     onCheckOutChange("");
     setActiveField("checkIn");
     setVisibleMonth(startOfMonth(minDate));
+    setFocusedDate(minDate);
   }
 
   return (
@@ -236,11 +361,15 @@ export function DateRangePicker({
             onClick={() => openFor("checkIn")}
           >
             <input
+              ref={checkInRef}
               id={checkInId}
               name="checkIn"
               type="text"
               inputMode="numeric"
               autoComplete="off"
+              required
+              aria-invalid={checkInInvalid}
+              aria-describedby={describedBy}
               placeholder="YYYY-MM-DD"
               value={checkIn}
               maxLength={10}
@@ -248,7 +377,21 @@ export function DateRangePicker({
               aria-haspopup="dialog"
               aria-expanded={isOpen && activeField === "checkIn"}
               aria-controls={panelId}
-              onFocus={() => openFor("checkIn")}
+              onFocus={() => {
+                if (suppressFocusOpenRef.current) {
+                  suppressFocusOpenRef.current = false;
+                  return;
+                }
+                openFor("checkIn");
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "ArrowDown") {
+                  event.preventDefault();
+                  focusCalendarDate(
+                    isValidDate(checkIn) ? checkIn : minDate,
+                  );
+                }
+              }}
               onChange={(event) => onCheckInChange(cleanDraft(event.target.value))}
             />
             <span className="calendar-glyph" aria-hidden="true">
@@ -264,11 +407,15 @@ export function DateRangePicker({
             onClick={() => openFor("checkOut")}
           >
             <input
+              ref={checkOutRef}
               id={checkOutId}
               name="checkOut"
               type="text"
               inputMode="numeric"
               autoComplete="off"
+              required
+              aria-invalid={checkOutInvalid}
+              aria-describedby={describedBy}
               placeholder="YYYY-MM-DD"
               value={checkOut}
               maxLength={10}
@@ -276,7 +423,25 @@ export function DateRangePicker({
               aria-haspopup="dialog"
               aria-expanded={isOpen && activeField === "checkOut"}
               aria-controls={panelId}
-              onFocus={() => openFor("checkOut")}
+              onFocus={() => {
+                if (suppressFocusOpenRef.current) {
+                  suppressFocusOpenRef.current = false;
+                  return;
+                }
+                openFor("checkOut");
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "ArrowDown") {
+                  event.preventDefault();
+                  focusCalendarDate(
+                    isValidDate(checkOut)
+                      ? checkOut
+                      : isValidDate(checkIn)
+                        ? addDays(checkIn, 1)
+                        : minDate,
+                  );
+                }
+              }}
               onChange={(event) =>
                 onCheckOutChange(cleanDraft(event.target.value))
               }
@@ -313,15 +478,22 @@ export function DateRangePicker({
               <button
                 type="button"
                 aria-label="上一个月"
-                onClick={() => setVisibleMonth(addMonths(visibleMonth, -1))}
-                disabled={visibleMonth <= startOfMonth(minDate)}
+                onClick={() => moveCalendarView(-1)}
+                disabled={
+                  visibleMonth <=
+                  startOfMonth(
+                    activeField === "checkOut" && isValidDate(checkIn)
+                      ? addDays(checkIn, 1)
+                      : minDate,
+                  )
+                }
               >
                 ‹
               </button>
               <button
                 type="button"
                 aria-label="下一个月"
-                onClick={() => setVisibleMonth(addMonths(visibleMonth, 1))}
+                onClick={() => moveCalendarView(1)}
               >
                 ›
               </button>
@@ -335,7 +507,10 @@ export function DateRangePicker({
               checkIn={checkIn}
               checkOut={checkOut}
               minDate={minDate}
+              focusedDate={focusedDate}
               onSelect={selectDate}
+              onFocusDate={setFocusedDate}
+              onNavigate={focusCalendarDate}
             />
             <CalendarMonth
               month={addMonths(visibleMonth, 1)}
@@ -343,7 +518,10 @@ export function DateRangePicker({
               checkIn={checkIn}
               checkOut={checkOut}
               minDate={minDate}
+              focusedDate={focusedDate}
               onSelect={selectDate}
+              onFocusDate={setFocusedDate}
+              onNavigate={focusCalendarDate}
               secondary
             />
           </div>
