@@ -1,6 +1,31 @@
+import type { Locale } from "./types";
+
+export const DEFAULT_LOCALE: Locale = "zh-CN";
+
+export const SUPPORTED_LOCALES = [
+  "zh-CN",
+  "en-US",
+  "ja-JP",
+  "ko-KR",
+] as const satisfies readonly Locale[];
+
+export const LANGUAGE_OPTIONS = [
+  { locale: "zh-CN", label: "简体中文" },
+  { locale: "en-US", label: "English" },
+  { locale: "ja-JP", label: "日本語" },
+  { locale: "ko-KR", label: "한국어" },
+] as const satisfies ReadonlyArray<{ locale: Locale; label: string }>;
+
+export function isLocale(value: unknown): value is Locale {
+  return (
+    typeof value === "string" &&
+    (SUPPORTED_LOCALES as readonly string[]).includes(value)
+  );
+}
+
 export function formatMessage(
   text: string,
-  values: Record<string, string | number>,
+  values: Readonly<Record<string, string | number>>,
 ) {
   return Object.entries(values).reduce(
     (result, [key, value]) =>
@@ -10,9 +35,10 @@ export function formatMessage(
 }
 
 export const zhCN = {
-  brand: "韩国东横INN房况查询",
+  brand: "韩国东横 INN 房况查询",
+  brandMark: "KR",
   brandUtility: "KOREA STAY FINDER",
-  productName: "韩国东横INN房况查询",
+  productName: "韩国东横 INN 房况查询",
   skipToSearch: "跳到查询条件",
   supportedRegions: "支持查询的韩国地区",
   heroEyebrow: "13 家酒店 · 7 座城市 · 一次查询",
@@ -20,8 +46,7 @@ export const zhCN = {
   heroDescription:
     "填写一次入住条件，实时汇总韩国东横 INN 官网公开的房型、计划与价格。本站仅供检索比较，预订仍在官网完成。",
   unofficial: "非东横 INN 官方网站",
-  liveData:
-    "结果来自东横 INN 官网的实时查询，库存和价格可能随时变化。",
+  liveData: "结果来自东横 INN 官网的实时查询，库存和价格可能随时变化。",
   officialReminder:
     "请在官网再次确认日期、人数、房型、计划资格和最终价格。",
   search: "查询余房",
@@ -33,6 +58,55 @@ export const zhCN = {
   allLongNotice: "将查询全部 13 家酒店，通常需要更长时间。",
   partialFailure: "部分酒店查询失败，当前结果可能不完整。",
   expired: "该结果不是当前实时结果，请重新查询。",
+  dateIncomplete: "请选择入住和退房日期",
+  roomPlaceholder: "客房",
+  roomImageAlt: "{room}的客房图片",
+  language: {
+    label: "语言",
+    selectLabel: "选择显示语言",
+  },
+  units: {
+    adultOne: "人",
+    adultOther: "人",
+    roomOne: "间",
+    roomOther: "间",
+    hotelOne: "家酒店",
+    hotelOther: "家酒店",
+    planOne: "个可订计划",
+    planOther: "个可订计划",
+    roomTypeOne: "个房型",
+    roomTypeOther: "个房型",
+    nightOne: "晚",
+    nightOther: "晚",
+    nightCount: "{count} {nightUnit}",
+    peopleRooms: "每室 {adults} {adultUnit} × {rooms} {roomUnit}",
+    hotelCount: "{count} {hotelUnit}",
+    roomPlanCount: "{count} {planUnit}",
+    seconds: "{seconds} 秒",
+  },
+  calendar: {
+    weekdays: ["一", "二", "三", "四", "五", "六", "日"],
+    checkIn: "入住",
+    checkOut: "退房",
+    dialogLabel: "选择住宿日期",
+    selectCheckIn: "选择入住日期",
+    selectCheckOut: "选择退房日期",
+    chooseCheckOut: "请选择退房日期",
+    chooseSequence: "请先选择入住日期，再选择退房日期。",
+    previousMonth: "上个月",
+    nextMonth: "下个月",
+    inputHint: "日期格式：年-月-日",
+    reset: "重新选择",
+  },
+  accessibility: {
+    loading: "正在加载",
+    closeDialog: "关闭对话框",
+    openHotelSelector: "打开酒店选择器",
+    decrease: "减少",
+    increase: "增加",
+    externalLink: "在新标签页打开",
+    errorSummary: "查询条件有误",
+  },
   fields: {
     region: "地区",
     hotels: "酒店选择",
@@ -52,7 +126,8 @@ export const zhCN = {
     title: "选择酒店，一次查询",
     subtitle: "官网只会在你点击查询后被访问。",
     night: "晚",
-    roomsSummary: "每室 {adults} 位成人 × {rooms} 间房，共 {total} 位成人",
+    roomsSummary:
+      "每室 {adults} {adultUnit} × {rooms} {roomUnit}，共 {total} {totalAdultUnit}",
     childNote: "不单独收集同床儿童；请在官网确认儿童与加床规则。",
     required: "请完整填写查询条件。",
     invalidDate: "请输入有效日期，格式为 YYYY-MM-DD。",
@@ -95,7 +170,7 @@ export const zhCN = {
   },
   hotel: {
     code: "酒店代码",
-    plans: "{rooms} 个房型 · {plans} 个可订计划",
+    plans: "{rooms} {roomTypeUnit} · {plans} {planUnit}",
     officialDetail: "官方详情",
     queriedAt: "查询于 {time}",
     waiting: "等待查询",
@@ -124,7 +199,9 @@ export const zhCN = {
     membershipPrice: "会员价",
     stock: "官网显示剩余 {count} 间",
     book: "前往官网预订",
-    bookingNote: "已预填酒店、日期、人数和房间数；请在官网重新选择并确认具体计划。",
+    bookingNote:
+      "已预填酒店、日期、人数和房间数；请在官网重新选择并确认具体计划。",
+    qualificationNote: "适用资格与限制请以官网说明为准。",
   },
   footer: {
     title: "关于数据与预订",
@@ -133,3 +210,573 @@ export const zhCN = {
     personal: "个人低频工具 · 无后台轮询 · 无自动下单",
   },
 } as const;
+
+type WidenMessages<T> = T extends string
+  ? string
+  : T extends readonly unknown[]
+    ? { readonly [Key in keyof T]: WidenMessages<T[Key]> }
+    : T extends object
+      ? { readonly [Key in keyof T]: WidenMessages<T[Key]> }
+      : T;
+
+export type Messages = WidenMessages<typeof zhCN>;
+
+export const enUS = {
+  brand: "Toyoko Inn Korea Availability",
+  brandMark: "KR",
+  brandUtility: "KOREA STAY FINDER",
+  productName: "Toyoko Inn Korea Availability",
+  skipToSearch: "Skip to search criteria",
+  supportedRegions: "Supported regions in South Korea",
+  heroEyebrow: "13 hotels · 7 cities · one search",
+  heroTitle: "Compare every hotel with one search.",
+  heroDescription:
+    "Enter your stay details once to compare room types, plans, and prices published live on the Toyoko Inn website. This site is for search and comparison only; bookings are completed on the official website.",
+  unofficial: "Unofficial Toyoko Inn website",
+  liveData:
+    "Results are queried live from the Toyoko Inn website. Availability and prices can change at any time.",
+  officialReminder:
+    "Please reconfirm the dates, guest count, room type, plan eligibility, and final price on the official website.",
+  search: "Search availability",
+  searching: "Searching…",
+  searchAgain: "Search all again",
+  editCriteria: "Edit criteria",
+  noHistory:
+    "Your recently used search criteria will appear here. Select one, then start the search manually.",
+  clearHistory: "Clear",
+  allLongNotice: "Searching all 13 hotels usually takes longer.",
+  partialFailure:
+    "Some hotel searches failed, so the current results may be incomplete.",
+  expired: "These are not current live results. Please search again.",
+  dateIncomplete: "Select check-in and check-out dates",
+  roomPlaceholder: "ROOM",
+  roomImageAlt: "Photo of {room}",
+  language: {
+    label: "Language",
+    selectLabel: "Select display language",
+  },
+  units: {
+    adultOne: "adult",
+    adultOther: "adults",
+    roomOne: "room",
+    roomOther: "rooms",
+    hotelOne: "hotel",
+    hotelOther: "hotels",
+    planOne: "bookable plan",
+    planOther: "bookable plans",
+    roomTypeOne: "room type",
+    roomTypeOther: "room types",
+    nightOne: "night",
+    nightOther: "nights",
+    nightCount: "{count} {nightUnit}",
+    peopleRooms: "{adults} {adultUnit} per room × {rooms} {roomUnit}",
+    hotelCount: "{count} {hotelUnit}",
+    roomPlanCount: "{count} {planUnit}",
+    seconds: "{seconds} sec",
+  },
+  calendar: {
+    weekdays: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+    checkIn: "Check-in",
+    checkOut: "Check-out",
+    dialogLabel: "Select stay dates",
+    selectCheckIn: "Select check-in date",
+    selectCheckOut: "Select check-out date",
+    chooseCheckOut: "Choose a check-out date",
+    chooseSequence: "Choose a check-in date, then a check-out date.",
+    previousMonth: "Previous month",
+    nextMonth: "Next month",
+    inputHint: "Date format: year-month-day",
+    reset: "Reset dates",
+  },
+  accessibility: {
+    loading: "Loading",
+    closeDialog: "Close dialog",
+    openHotelSelector: "Open hotel selector",
+    decrease: "Decrease",
+    increase: "Increase",
+    externalLink: "Opens in a new tab",
+    errorSummary: "There is a problem with the search criteria",
+  },
+  fields: {
+    region: "Region",
+    hotels: "Hotels",
+    checkIn: "Check-in date",
+    checkOut: "Check-out date",
+    adultsPerRoom: "Adults per room",
+    roomCount: "Number of rooms",
+    smokingPreference: "Smoking preference",
+  },
+  smoking: {
+    any: "Any",
+    nonSmoking: "Non-smoking",
+    smoking: "Smoking",
+    unknown: "Unknown",
+  },
+  form: {
+    title: "Choose hotels and search once",
+    subtitle: "The official website is accessed only after you start a search.",
+    night: "nights",
+    roomsSummary:
+      "{adults} {adultUnit} per room × {rooms} {roomUnit} · {total} {totalAdultUnit} total",
+    childNote:
+      "Children sharing a bed are not collected separately. Please check the official website for child and extra-bed policies.",
+    required: "Complete all search criteria.",
+    invalidDate: "Enter a valid date in YYYY-MM-DD format.",
+    checkInPast: "Check-in cannot be earlier than today in South Korea.",
+    invalidCheckOut: "Check-out must be later than check-in.",
+    noHotels: "Select at least one hotel.",
+  },
+  hotels: {
+    panelTitle: "Choose hotels by region",
+    panelHint: "Expand a region to select all hotels or choose them individually.",
+    allHotels: "All South Korea",
+    selectAll: "Select all",
+    done: "Done",
+    selectedNone: "No hotels selected",
+    selectedAll: "All South Korea · {count} hotels",
+    selectedRegion: "{region} · {count}",
+    selectedMixed: "{count} hotels selected",
+    selectedCount: "{selected} of {total} selected",
+  },
+  history: {
+    title: "Recent searches",
+  },
+  results: {
+    title: "Search results",
+    live: "Live",
+    searching: "Searching",
+    hasRoom: "Available",
+    noRoom: "Sold out",
+    noPreferenceMatch: "Available, but no category match",
+    incomplete: "Incomplete results",
+    completed: "Completed {done} of {total} hotels",
+    startedAt: "Started at {time} (Korea time)",
+    totalDuration: "Completed in {seconds} seconds",
+    views: {
+      all: "All hotels",
+      available: "Available only",
+      failed: "Failed searches only",
+    },
+    noViewMatch: "No hotels match this view.",
+  },
+  hotel: {
+    code: "Hotel code",
+    plans: "{rooms} {roomTypeUnit} · {plans} {planUnit}",
+    officialDetail: "Official details",
+    queriedAt: "Queried at {time}",
+    waiting: "Waiting",
+    querying: "Checking the official website…",
+    available: "Rooms available",
+    soldOut: "No bookable room types found for these criteria",
+    failed: "Search failed",
+    retry: "Retry this hotel",
+    confirmOfficial: "Reconfirm on the official website",
+    noPreference:
+      "This hotel has available rooms, but none match the selected smoking preference.",
+  },
+  errors: {
+    timeout: "Request timed out",
+    officialError: "The official website is temporarily unavailable",
+    accessRestricted: "The official website requires verification or restricts access",
+    parserChanged: "The page structure changed and cannot currently be read",
+    unknown: "Unknown error",
+  },
+  offer: {
+    officialRoomName: "Official Japanese name",
+    officialPlanName: "Bookable plan",
+    officialPlanSource: "Official Japanese name",
+    stayTotal: "Per room · total for this stay",
+    unknownBasis: "See the official website for the price basis",
+    generalPrice: "Standard price",
+    membershipPrice: "Member price",
+    stock: "{count} rooms shown as remaining",
+    book: "Book on the official website",
+    bookingNote:
+      "The hotel, dates, guest count, and room count have been prefilled. Reselect and confirm the specific plan on the official website.",
+    qualificationNote:
+      "Check the official website for eligibility requirements and restrictions.",
+  },
+  footer: {
+    title: "About availability and booking",
+    description:
+      "This site only organizes public search results from the Toyoko Inn website. It does not retain accounts, cookies, prices, or inventory. A failed query is never shown as sold out.",
+    personal: "Personal, low-frequency tool · no background polling · no automated booking",
+  },
+} as const satisfies Messages;
+
+export const jaJP = {
+  brand: "韓国の東横INN 空室検索",
+  brandMark: "KR",
+  brandUtility: "KOREA STAY FINDER",
+  productName: "韓国の東横INN 空室検索",
+  skipToSearch: "検索条件へ移動",
+  supportedRegions: "検索対象の韓国地域",
+  heroEyebrow: "13ホテル · 7都市 · 一括検索",
+  heroTitle: "ホテルごとの空室確認を、一度の比較に。",
+  heroDescription:
+    "宿泊条件を一度入力するだけで、韓国の東横INN公式サイトに公開されている客室タイプ、プラン、料金をリアルタイムでまとめて比較できます。本サイトは検索・比較専用で、予約は公式サイトで行います。",
+  unofficial: "東横INNの非公式サイトです",
+  liveData:
+    "結果は東横INN公式サイトへリアルタイムに照会しています。空室状況や料金は随時変わる場合があります。",
+  officialReminder:
+    "日程、人数、客室タイプ、プランの利用条件、最終料金を公式サイトで改めてご確認ください。",
+  search: "空室を検索",
+  searching: "検索中…",
+  searchAgain: "すべて再検索",
+  editCriteria: "条件を変更",
+  noHistory:
+    "最近使用した検索条件がここに表示されます。選択後、検索は手動で開始してください。",
+  clearHistory: "消去",
+  allLongNotice: "13ホテルすべての検索には、通常より時間がかかります。",
+  partialFailure:
+    "一部のホテルを検索できなかったため、結果が不完全な場合があります。",
+  expired: "現在のリアルタイム結果ではありません。再検索してください。",
+  dateIncomplete: "チェックイン日とチェックアウト日を選択してください",
+  roomPlaceholder: "客室",
+  roomImageAlt: "{room}の客室画像",
+  language: {
+    label: "言語",
+    selectLabel: "表示言語を選択",
+  },
+  units: {
+    adultOne: "名",
+    adultOther: "名",
+    roomOne: "室",
+    roomOther: "室",
+    hotelOne: "軒",
+    hotelOther: "軒",
+    planOne: "件の予約可能なプラン",
+    planOther: "件の予約可能なプラン",
+    roomTypeOne: "件の客室タイプ",
+    roomTypeOther: "件の客室タイプ",
+    nightOne: "泊",
+    nightOther: "泊",
+    nightCount: "{count}{nightUnit}",
+    peopleRooms: "1室 {adults}{adultUnit} × {rooms}{roomUnit}",
+    hotelCount: "{count}{hotelUnit}",
+    roomPlanCount: "{count}{planUnit}",
+    seconds: "{seconds}秒",
+  },
+  calendar: {
+    weekdays: ["月", "火", "水", "木", "金", "土", "日"],
+    checkIn: "チェックイン",
+    checkOut: "チェックアウト",
+    dialogLabel: "宿泊日を選択",
+    selectCheckIn: "チェックイン日を選択",
+    selectCheckOut: "チェックアウト日を選択",
+    chooseCheckOut: "チェックアウト日を選択してください",
+    chooseSequence:
+      "チェックイン日を選択してから、チェックアウト日を選択してください。",
+    previousMonth: "前の月",
+    nextMonth: "次の月",
+    inputHint: "日付形式：年-月-日",
+    reset: "日付を選び直す",
+  },
+  accessibility: {
+    loading: "読み込み中",
+    closeDialog: "ダイアログを閉じる",
+    openHotelSelector: "ホテル選択を開く",
+    decrease: "減らす",
+    increase: "増やす",
+    externalLink: "新しいタブで開きます",
+    errorSummary: "検索条件に問題があります",
+  },
+  fields: {
+    region: "地域",
+    hotels: "ホテル選択",
+    checkIn: "チェックイン日",
+    checkOut: "チェックアウト日",
+    adultsPerRoom: "1室あたりの大人の人数",
+    roomCount: "客室数",
+    smokingPreference: "喫煙条件",
+  },
+  smoking: {
+    any: "指定なし",
+    nonSmoking: "禁煙",
+    smoking: "喫煙",
+    unknown: "不明",
+  },
+  form: {
+    title: "ホテルを選んで一括検索",
+    subtitle: "検索ボタンを押した後にのみ、公式サイトへアクセスします。",
+    night: "泊",
+    roomsSummary:
+      "1室 {adults}{adultUnit} × {rooms}{roomUnit} · 合計 {total}{totalAdultUnit}",
+    childNote:
+      "添い寝のお子様は個別に入力しません。お子様やエキストラベッドの規定は公式サイトでご確認ください。",
+    required: "検索条件をすべて入力してください。",
+    invalidDate: "YYYY-MM-DD形式で有効な日付を入力してください。",
+    checkInPast: "チェックイン日は韓国の本日より前に設定できません。",
+    invalidCheckOut:
+      "チェックアウト日はチェックイン日より後に設定してください。",
+    noHotels: "ホテルを1軒以上選択してください。",
+  },
+  hotels: {
+    panelTitle: "地域からホテルを選択",
+    panelHint: "地域を開くと、全選択またはホテルごとの選択ができます。",
+    allHotels: "韓国全域",
+    selectAll: "すべて選択",
+    done: "完了",
+    selectedNone: "ホテルが選択されていません",
+    selectedAll: "韓国全域 · {count}ホテル",
+    selectedRegion: "{region} · {count}ホテル",
+    selectedMixed: "{count}ホテルを選択済み",
+    selectedCount: "{total}ホテル中 {selected}ホテルを選択",
+  },
+  history: {
+    title: "最近使用した条件",
+  },
+  results: {
+    title: "検索結果",
+    live: "リアルタイム",
+    searching: "検索中",
+    hasRoom: "空室あり",
+    noRoom: "空室なし",
+    noPreferenceMatch: "空室あり・指定タイプなし",
+    incomplete: "結果が不完全です",
+    completed: "{total}ホテル中 {done}ホテル完了",
+    startedAt: "{time} 開始（韓国時間）",
+    totalDuration: "すべて完了 · 所要時間 {seconds}秒",
+    views: {
+      all: "すべてのホテル",
+      available: "空室ありのみ",
+      failed: "検索失敗のみ",
+    },
+    noViewMatch: "この表示条件に該当するホテルはありません。",
+  },
+  hotel: {
+    code: "ホテルコード",
+    plans: "{rooms}{roomTypeUnit} · {plans}{planUnit}",
+    officialDetail: "公式サイトの詳細",
+    queriedAt: "{time} に検索",
+    waiting: "検索待ち",
+    querying: "公式サイトを確認中…",
+    available: "予約可能な客室あり",
+    soldOut: "この条件で予約可能な客室タイプは見つかりませんでした",
+    failed: "検索に失敗しました",
+    retry: "このホテルのみ再検索",
+    confirmOfficial: "公式サイトで再確認",
+    noPreference:
+      "予約可能な客室はありますが、選択した喫煙条件に合う客室タイプはありません。",
+  },
+  errors: {
+    timeout: "リクエストがタイムアウトしました",
+    officialError: "公式サイトを一時的に利用できません",
+    accessRestricted: "公式サイトで確認が必要、またはアクセスが制限されています",
+    parserChanged: "ページ構造が変更されたため、現在は読み取れません",
+    unknown: "不明なエラー",
+  },
+  offer: {
+    officialRoomName: "公式の客室名",
+    officialPlanName: "予約可能なプラン",
+    officialPlanSource: "公式のプラン名",
+    stayTotal: "1室あたり · 今回の宿泊合計",
+    unknownBasis: "料金単位は公式サイトでご確認ください",
+    generalPrice: "一般料金",
+    membershipPrice: "会員料金",
+    stock: "公式サイトの残室数：{count}室",
+    book: "公式サイトで予約",
+    bookingNote:
+      "ホテル、日程、人数、客室数は入力済みです。公式サイトで対象プランを選び直し、内容をご確認ください。",
+    qualificationNote: "利用資格や制限事項は公式サイトでご確認ください。",
+  },
+  footer: {
+    title: "データと予約について",
+    description:
+      "本サイトは東横INN公式サイトの公開検索結果のみを整理しています。アカウント、Cookie、料金、在庫は保存しません。検索失敗を空室なしとして表示することもありません。",
+    personal: "個人向け低頻度ツール · バックグラウンド照会なし · 自動予約なし",
+  },
+} as const satisfies Messages;
+
+export const koKR = {
+  brand: "한국 토요코인 객실 조회",
+  brandMark: "KR",
+  brandUtility: "KOREA STAY FINDER",
+  productName: "한국 토요코인 객실 조회",
+  skipToSearch: "검색 조건으로 이동",
+  supportedRegions: "검색 가능한 한국 지역",
+  heroEyebrow: "호텔 13곳 · 도시 7곳 · 한 번에 검색",
+  heroTitle: "호텔별 객실 조회를 한 번의 비교로.",
+  heroDescription:
+    "숙박 조건을 한 번만 입력하면 한국 토요코인 공식 웹사이트에 공개된 객실 유형, 플랜, 요금을 실시간으로 모아 비교할 수 있습니다. 이 사이트는 검색과 비교만 제공하며 예약은 공식 웹사이트에서 진행됩니다.",
+  unofficial: "토요코인 비공식 웹사이트",
+  liveData:
+    "결과는 토요코인 공식 웹사이트에서 실시간으로 조회합니다. 재고와 요금은 언제든 변경될 수 있습니다.",
+  officialReminder:
+    "날짜, 인원, 객실 유형, 플랜 이용 자격과 최종 요금을 공식 웹사이트에서 다시 확인해 주세요.",
+  search: "빈 객실 검색",
+  searching: "검색 중…",
+  searchAgain: "전체 다시 검색",
+  editCriteria: "조건 수정",
+  noHistory:
+    "최근 사용한 검색 조건이 여기에 표시됩니다. 조건을 선택한 뒤 검색을 직접 시작해 주세요.",
+  clearHistory: "지우기",
+  allLongNotice: "13개 호텔을 모두 검색하면 일반적으로 시간이 더 걸립니다.",
+  partialFailure:
+    "일부 호텔 검색에 실패하여 현재 결과가 완전하지 않을 수 있습니다.",
+  expired: "현재 실시간 결과가 아닙니다. 다시 검색해 주세요.",
+  dateIncomplete: "체크인 및 체크아웃 날짜를 선택해 주세요",
+  roomPlaceholder: "객실",
+  roomImageAlt: "{room} 객실 이미지",
+  language: {
+    label: "언어",
+    selectLabel: "표시 언어 선택",
+  },
+  units: {
+    adultOne: "명",
+    adultOther: "명",
+    roomOne: "실",
+    roomOther: "실",
+    hotelOne: "곳의 호텔",
+    hotelOther: "곳의 호텔",
+    planOne: "개의 예약 가능 플랜",
+    planOther: "개의 예약 가능 플랜",
+    roomTypeOne: "개의 객실 유형",
+    roomTypeOther: "개의 객실 유형",
+    nightOne: "박",
+    nightOther: "박",
+    nightCount: "{count}{nightUnit}",
+    peopleRooms: "객실당 {adults}{adultUnit} × {rooms}{roomUnit}",
+    hotelCount: "{count}{hotelUnit}",
+    roomPlanCount: "{count}{planUnit}",
+    seconds: "{seconds}초",
+  },
+  calendar: {
+    weekdays: ["월", "화", "수", "목", "금", "토", "일"],
+    checkIn: "체크인",
+    checkOut: "체크아웃",
+    dialogLabel: "숙박 날짜 선택",
+    selectCheckIn: "체크인 날짜 선택",
+    selectCheckOut: "체크아웃 날짜 선택",
+    chooseCheckOut: "체크아웃 날짜를 선택해 주세요",
+    chooseSequence: "체크인 날짜를 먼저 선택한 뒤 체크아웃 날짜를 선택해 주세요.",
+    previousMonth: "이전 달",
+    nextMonth: "다음 달",
+    inputHint: "날짜 형식: 연-월-일",
+    reset: "날짜 다시 선택",
+  },
+  accessibility: {
+    loading: "불러오는 중",
+    closeDialog: "대화 상자 닫기",
+    openHotelSelector: "호텔 선택 창 열기",
+    decrease: "줄이기",
+    increase: "늘리기",
+    externalLink: "새 탭에서 열림",
+    errorSummary: "검색 조건에 문제가 있습니다",
+  },
+  fields: {
+    region: "지역",
+    hotels: "호텔 선택",
+    checkIn: "체크인 날짜",
+    checkOut: "체크아웃 날짜",
+    adultsPerRoom: "객실당 성인 인원",
+    roomCount: "객실 수",
+    smokingPreference: "흡연 조건",
+  },
+  smoking: {
+    any: "상관없음",
+    nonSmoking: "금연",
+    smoking: "흡연",
+    unknown: "알 수 없음",
+  },
+  form: {
+    title: "호텔을 선택하고 한 번에 검색",
+    subtitle: "검색 버튼을 누른 뒤에만 공식 웹사이트에 접속합니다.",
+    night: "박",
+    roomsSummary:
+      "객실당 성인 {adults}{adultUnit} × {rooms}{roomUnit} · 총 성인 {total}{totalAdultUnit}",
+    childNote:
+      "침대를 함께 사용하는 어린이는 별도로 입력하지 않습니다. 어린이 및 엑스트라 베드 규정은 공식 웹사이트에서 확인해 주세요.",
+    required: "검색 조건을 모두 입력해 주세요.",
+    invalidDate: "YYYY-MM-DD 형식의 유효한 날짜를 입력해 주세요.",
+    checkInPast: "체크인 날짜는 한국 현지 오늘보다 빠를 수 없습니다.",
+    invalidCheckOut: "체크아웃 날짜는 체크인 날짜보다 늦어야 합니다.",
+    noHotels: "호텔을 한 곳 이상 선택해 주세요.",
+  },
+  hotels: {
+    panelTitle: "지역별 호텔 선택",
+    panelHint: "지역을 펼쳐 전체 또는 개별 호텔을 선택할 수 있습니다.",
+    allHotels: "대한민국 전체",
+    selectAll: "전체 선택",
+    done: "완료",
+    selectedNone: "선택한 호텔 없음",
+    selectedAll: "대한민국 전체 · 호텔 {count}곳",
+    selectedRegion: "{region} · 호텔 {count}곳",
+    selectedMixed: "호텔 {count}곳 선택",
+    selectedCount: "{total}곳 중 {selected}곳 선택",
+  },
+  history: {
+    title: "최근 사용",
+  },
+  results: {
+    title: "검색 결과",
+    live: "실시간",
+    searching: "검색 중",
+    hasRoom: "객실 있음",
+    noRoom: "객실 없음",
+    noPreferenceMatch: "객실 있음 · 선택 유형과 불일치",
+    incomplete: "불완전한 결과",
+    completed: "총 {total}곳 중 {done}곳 완료",
+    startedAt: "{time} 시작(한국 시간)",
+    totalDuration: "전체 완료 · {seconds}초 소요",
+    views: {
+      all: "모든 호텔",
+      available: "객실 있는 호텔만",
+      failed: "검색 실패만",
+    },
+    noViewMatch: "현재 보기에 해당하는 호텔이 없습니다.",
+  },
+  hotel: {
+    code: "호텔 코드",
+    plans: "{rooms}{roomTypeUnit} · {plans}{planUnit}",
+    officialDetail: "공식 상세 정보",
+    queriedAt: "{time} 조회",
+    waiting: "검색 대기",
+    querying: "공식 웹사이트 확인 중…",
+    available: "예약 가능한 객실 있음",
+    soldOut: "현재 조건으로 예약 가능한 객실 유형을 찾지 못했습니다",
+    failed: "검색 실패",
+    retry: "이 호텔만 다시 검색",
+    confirmOfficial: "공식 웹사이트에서 다시 확인",
+    noPreference:
+      "예약 가능한 객실은 있지만 선택한 흡연 조건에 맞는 객실 유형은 없습니다.",
+  },
+  errors: {
+    timeout: "요청 시간 초과",
+    officialError: "공식 웹사이트를 일시적으로 사용할 수 없습니다",
+    accessRestricted: "공식 웹사이트에서 인증을 요구하거나 접속을 제한했습니다",
+    parserChanged: "페이지 구조가 변경되어 현재 내용을 읽을 수 없습니다",
+    unknown: "알 수 없는 오류",
+  },
+  offer: {
+    officialRoomName: "공식 일본어 객실명",
+    officialPlanName: "예약 가능 플랜",
+    officialPlanSource: "공식 일본어 플랜명",
+    stayTotal: "객실당 · 이번 숙박 총액",
+    unknownBasis: "요금 기준은 공식 웹사이트에서 확인",
+    generalPrice: "일반 요금",
+    membershipPrice: "회원 요금",
+    stock: "공식 웹사이트 잔여 객실 {count}실",
+    book: "공식 웹사이트에서 예약",
+    bookingNote:
+      "호텔, 날짜, 인원, 객실 수가 미리 입력되어 있습니다. 공식 웹사이트에서 플랜을 다시 선택하고 확인해 주세요.",
+    qualificationNote: "이용 자격과 제한 사항은 공식 웹사이트에서 확인해 주세요.",
+  },
+  footer: {
+    title: "데이터 및 예약 안내",
+    description:
+      "이 사이트는 토요코인 공식 웹사이트의 공개 검색 결과만 정리합니다. 계정, 쿠키, 요금 또는 재고를 저장하지 않으며 검색 실패를 객실 없음으로 표시하지 않습니다.",
+    personal: "개인용 저빈도 도구 · 백그라운드 조회 없음 · 자동 예약 없음",
+  },
+} as const satisfies Messages;
+
+export const translations = {
+  "zh-CN": zhCN,
+  "en-US": enUS,
+  "ja-JP": jaJP,
+  "ko-KR": koKR,
+} as const satisfies Record<Locale, Messages>;
+
+export function getMessages(locale: Locale): Messages {
+  return translations[locale];
+}

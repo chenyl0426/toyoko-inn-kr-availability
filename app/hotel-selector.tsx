@@ -1,9 +1,17 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { HOTELS, REGION_OPTIONS, hotelsForRegion } from "@/lib/hotels";
-import { formatMessage, zhCN as c } from "@/lib/i18n";
-import type { RegionId } from "@/lib/types";
+import { useI18n } from "@/app/i18n-provider";
+import {
+  HOTELS,
+  REGION_OPTIONS,
+  hotelCity,
+  hotelName,
+  hotelsForRegion,
+  regionName,
+} from "@/lib/hotels";
+import { DEFAULT_LOCALE, formatMessage, getMessages } from "@/lib/i18n";
+import type { Locale, RegionId } from "@/lib/types";
 
 type HotelSelectorProps = {
   selectedHotelCodes: string[];
@@ -20,7 +28,11 @@ const REGION_GROUPS = REGION_OPTIONS.filter(
   hotels: hotelsForRegion(region.id),
 }));
 
-export function describeHotelSelection(hotelCodes: string[]) {
+export function describeHotelSelection(
+  hotelCodes: string[],
+  locale: Locale = DEFAULT_LOCALE,
+) {
+  const c = getMessages(locale);
   const selected = ACTIVE_HOTELS.filter((hotel) =>
     hotelCodes.includes(hotel.hotelCode),
   );
@@ -28,12 +40,12 @@ export function describeHotelSelection(hotelCodes: string[]) {
   if (selected.length === ACTIVE_HOTELS.length) {
     return formatMessage(c.hotels.selectedAll, { count: selected.length });
   }
-  if (selected.length === 1) return selected[0].nameZh;
+  if (selected.length === 1) return hotelName(selected[0], locale);
 
   const cityIds = new Set(selected.map((hotel) => hotel.cityId));
   if (cityIds.size === 1) {
     return formatMessage(c.hotels.selectedRegion, {
-      region: selected[0].cityZh,
+      region: hotelCity(selected[0], locale),
       count: selected.length,
     });
   }
@@ -46,6 +58,7 @@ export function HotelSelector({
   describedBy,
   onChange,
 }: HotelSelectorProps) {
+  const { locale, messages: c } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
   const [expandedRegions, setExpandedRegions] = useState<Set<RegionId>>(
     new Set(),
@@ -144,7 +157,7 @@ export function HotelSelector({
       >
         <span>
           <strong id={summaryId}>
-            {describeHotelSelection(selectedHotelCodes)}
+            {describeHotelSelection(selectedHotelCodes, locale)}
           </strong>
           <small>
             {formatMessage(c.hotels.selectedCount, {
@@ -224,7 +237,7 @@ export function HotelSelector({
                         className={`region-chevron${isExpanded ? " is-expanded" : ""}`}
                         aria-hidden="true"
                       />
-                      <strong>{region.label}</strong>
+                      <strong>{regionName(region.id, locale)}</strong>
                       <span>
                         {selectedCount} / {region.hotels.length}
                       </span>
@@ -260,7 +273,7 @@ export function HotelSelector({
                           />
                           <span className="hotel-option-check" aria-hidden="true" />
                           <span>
-                            <strong>{hotel.nameZh}</strong>
+                            <strong>{hotelName(hotel, locale)}</strong>
                             <small>
                               {c.hotel.code} {hotel.hotelCode}
                             </small>

@@ -8,6 +8,8 @@ export type RegionId =
   | "changwon"
   | "busan";
 
+export type Locale = "zh-CN" | "en-US" | "ja-JP" | "ko-KR";
+
 export type SmokingPreference = "any" | "nonSmoking" | "smoking";
 export type SmokingType = "nonSmoking" | "smoking" | "unknown";
 export type HotelStatus = "available" | "soldOut" | "failed";
@@ -28,7 +30,7 @@ export interface StayCriteria {
 export interface SearchCriteria extends StayCriteria {
   hotelCodes: string[];
   smokingPreference: SmokingPreference;
-  locale: "zh-CN";
+  locale: Locale;
   requestedAt: string;
 }
 

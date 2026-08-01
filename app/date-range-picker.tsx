@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import { useI18n } from "@/app/i18n-provider";
+import type { Locale } from "@/lib/types";
 
 type ActiveField = "checkIn" | "checkOut";
 
@@ -15,7 +17,6 @@ type DateRangePickerProps = {
   onCheckOutChange: (value: string) => void;
 };
 
-const WEEKDAYS = ["一", "二", "三", "四", "五", "六", "日"];
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 function isValidDate(value: string) {
@@ -49,16 +50,16 @@ function addDays(value: string, amount: number) {
   return toIsoDate(date);
 }
 
-function monthLabel(value: string) {
-  return new Intl.DateTimeFormat("zh-CN", {
+function monthLabel(value: string, locale: Locale) {
+  return new Intl.DateTimeFormat(locale, {
     year: "numeric",
     month: "long",
     timeZone: "UTC",
   }).format(new Date(`${value}T00:00:00Z`));
 }
 
-function fullDateLabel(value: string) {
-  return new Intl.DateTimeFormat("zh-CN", {
+function fullDateLabel(value: string, locale: Locale) {
+  return new Intl.DateTimeFormat(locale, {
     year: "numeric",
     month: "long",
     day: "numeric",
@@ -101,6 +102,7 @@ function CalendarMonth({
   onNavigate: (value: string) => void;
   secondary?: boolean;
 }) {
+  const { locale, messages: c } = useI18n();
   const currentMonth = month.slice(0, 7);
   const validCheckIn = isValidDate(checkIn);
   const validCheckOut = isValidDate(checkOut);
@@ -108,11 +110,11 @@ function CalendarMonth({
   return (
     <section
       className={`calendar-month${secondary ? " calendar-month-secondary" : ""}`}
-      aria-label={monthLabel(month)}
+      aria-label={monthLabel(month, locale)}
     >
-      <h3>{monthLabel(month)}</h3>
+      <h3>{monthLabel(month, locale)}</h3>
       <div className="calendar-weekdays" aria-hidden="true">
-        {WEEKDAYS.map((weekday) => (
+        {c.calendar.weekdays.map((weekday) => (
           <span key={weekday}>{weekday}</span>
         ))}
       </div>
@@ -175,7 +177,7 @@ function CalendarMonth({
                   );
                 }
               }}
-              aria-label={fullDateLabel(date)}
+              aria-label={fullDateLabel(date, locale)}
               aria-pressed={isStart || isEnd}
               aria-hidden={isOutsideMonth || undefined}
               key={date}
@@ -199,6 +201,7 @@ export function DateRangePicker({
   onCheckInChange,
   onCheckOutChange,
 }: DateRangePickerProps) {
+  const { messages: c } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
   const [activeField, setActiveField] = useState<ActiveField>("checkIn");
   const [visibleMonth, setVisibleMonth] = useState(() =>
@@ -355,7 +358,7 @@ export function DateRangePicker({
     <div className="date-range-picker" ref={wrapperRef}>
       <div className="date-range-fields">
         <div className="field">
-          <label htmlFor={checkInId}>入住日期</label>
+          <label htmlFor={checkInId}>{c.calendar.checkIn}</label>
           <div
             className={`date-input-shell${isOpen && activeField === "checkIn" ? " is-active" : ""}`}
             onClick={() => openFor("checkIn")}
@@ -399,7 +402,7 @@ export function DateRangePicker({
         </div>
 
         <div className="field">
-          <label htmlFor={checkOutId}>退房日期</label>
+          <label htmlFor={checkOutId}>{c.calendar.checkOut}</label>
           <div
             className={`date-input-shell${isOpen && activeField === "checkOut" ? " is-active" : ""}`}
             onClick={() => openFor("checkOut")}
@@ -455,25 +458,27 @@ export function DateRangePicker({
           id={panelId}
           role="dialog"
           aria-modal="false"
-          aria-label="选择入住和退房日期"
+          aria-label={c.calendar.dialogLabel}
         >
           <div className="calendar-toolbar">
             <div>
               <strong>
-                {activeField === "checkIn" ? "选择入住日期" : "选择退房日期"}
+                {activeField === "checkIn"
+                  ? c.calendar.selectCheckIn
+                  : c.calendar.selectCheckOut}
               </strong>
               <span>
                 {isValidDate(checkIn)
                   ? isValidDate(checkOut)
                     ? `${checkIn} → ${checkOut}`
-                    : `${checkIn} → 请选择退房日期`
-                  : "先选择入住日期，再选择退房日期"}
+                    : `${checkIn} → ${c.calendar.chooseCheckOut}`
+                  : c.calendar.chooseSequence}
               </span>
             </div>
             <div className="calendar-nav">
               <button
                 type="button"
-                aria-label="上一个月"
+                aria-label={c.calendar.previousMonth}
                 onClick={() => moveCalendarView(-1)}
                 disabled={
                   visibleMonth <=
@@ -488,7 +493,7 @@ export function DateRangePicker({
               </button>
               <button
                 type="button"
-                aria-label="下一个月"
+                aria-label={c.calendar.nextMonth}
                 onClick={() => moveCalendarView(1)}
               >
                 ›
@@ -523,9 +528,9 @@ export function DateRangePicker({
           </div>
 
           <div className="calendar-footer">
-            <span>可直接键入日期，格式为 YYYY-MM-DD</span>
+            <span>{c.calendar.inputHint}</span>
             <button type="button" onClick={resetRange}>
-              重新选择
+              {c.calendar.reset}
             </button>
           </div>
         </div>

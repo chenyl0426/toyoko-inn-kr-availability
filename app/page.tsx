@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { DateRangePicker } from "@/app/date-range-picker";
+import { LanguageSwitcher, useI18n } from "@/app/i18n-provider";
 import {
   HotelSelector,
   describeHotelSelection,
@@ -10,15 +11,20 @@ import {
   FORM_LIMITS,
   HOTELS,
   REGION_OPTIONS,
+  hotelCity,
+  hotelName,
   hotelsForCodes,
   hotelsForRegion,
   normalizeHotelCodes,
+  regionName,
 } from "@/lib/hotels";
-import { formatMessage, zhCN as c } from "@/lib/i18n";
+import { formatMessage, isLocale } from "@/lib/i18n";
+import { planName, roomName } from "@/lib/toyoko-translations";
 import type {
   ErrorType,
   Hotel,
   HotelAvailability,
+  Locale,
   RoomOffer,
   SearchCriteria,
   SmokingPreference,
@@ -28,8 +34,11 @@ import type {
 type HistoryCriteria = Omit<SearchCriteria, "requestedAt">;
 type ResultView = "all" | "available" | "failed";
 
-const HISTORY_KEY = "toyoko-korea-search-history-v2";
-const LEGACY_HISTORY_KEY = "toyoko-korea-search-history-v1";
+const HISTORY_KEY = "toyoko-korea-search-history-v3";
+const LEGACY_HISTORY_KEYS = [
+  "toyoko-korea-search-history-v2",
+  "toyoko-korea-search-history-v1",
+];
 const MAX_HISTORY = 10;
 const MAX_CONCURRENCY = 3;
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -48,7 +57,6 @@ function historySignature(item: HistoryCriteria) {
     item.adultsPerRoom,
     item.roomCount,
     item.smokingPreference,
-    item.locale,
   ].join("|");
 }
 
@@ -105,8 +113,7 @@ function normalizeHistoryCriteria(value: unknown): HistoryCriteria | null {
     !Number.isInteger(roomCount) ||
     roomCount < FORM_LIMITS.roomCount.min ||
     roomCount > FORM_LIMITS.roomCount.max ||
-    !smokingPreference ||
-    item.locale !== "zh-CN"
+    !smokingPreference
   ) {
     return null;
   }
@@ -118,7 +125,7 @@ function normalizeHistoryCriteria(value: unknown): HistoryCriteria | null {
     adultsPerRoom,
     roomCount,
     smokingPreference,
-    locale: "zh-CN",
+    locale: isLocale(item.locale) ? item.locale : "zh-CN",
   };
 }
 
@@ -167,9 +174,9 @@ function nightsBetween(checkIn: string, checkOut: string) {
   return Math.max(0, Math.round(difference / 86_400_000));
 }
 
-function formatDate(date: string) {
-  if (!isValidDate(date)) return "日期未填写完整";
-  return new Intl.DateTimeFormat("zh-CN", {
+function formatDate(date: string, locale: Locale, emptyLabel: string) {
+  if (!isValidDate(date)) return emptyLabel;
+  return new Intl.DateTimeFormat(locale, {
     month: "short",
     day: "numeric",
     weekday: "short",
@@ -177,8 +184,8 @@ function formatDate(date: string) {
   }).format(new Date(`${date}T00:00:00+09:00`));
 }
 
-function formatKoreaTime(date: string | number) {
-  return new Intl.DateTimeFormat("zh-CN", {
+function formatKoreaTime(date: string | number, locale: Locale) {
+  return new Intl.DateTimeFormat(locale, {
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
@@ -189,12 +196,21 @@ function formatKoreaTime(date: string | number) {
   }).format(new Date(date));
 }
 
-function formatKrw(amount: number) {
-  return new Intl.NumberFormat("zh-CN", {
+function formatKrw(amount: number, locale: Locale) {
+  return new Intl.NumberFormat(locale, {
     style: "currency",
     currency: "KRW",
     maximumFractionDigits: 0,
   }).format(amount);
+}
+
+function pluralUnit(
+  count: number,
+  locale: Locale,
+  one: string,
+  other: string,
+) {
+  return new Intl.PluralRules(locale).select(count) === "one" ? one : other;
 }
 
 function visibleOffersForPreference(
@@ -234,12 +250,7 @@ function unknownFailure(hotel: Hotel): HotelAvailability {
     durationMs: 0,
     errorType: "unknown",
     sourceUrl: hotel.officialDetailUrl,
-    message: c.errors.unknown,
   };
-}
-
-function statusText(errorType: ErrorType | null) {
-  return errorType ? c.errors[errorType] : c.hotel.failed;
 }
 
 function StatusPill({
@@ -273,11 +284,13 @@ function groupOffers(offers: RoomOffer[]): RoomGroupData[] {
 }
 
 function RoomImage({ offer }: { offer: RoomOffer }) {
+  const { locale, messages: c } = useI18n();
   const [hasError, setHasError] = useState(false);
+  const localizedRoomName = roomName(offer.roomTypeSource, locale);
   if (!offer.roomImageUrl || hasError) {
     return (
       <div className="room-image-placeholder" aria-hidden="true">
-        房
+        {c.roomPlaceholder}
       </div>
     );
   }
@@ -288,7 +301,7 @@ function RoomImage({ offer }: { offer: RoomOffer }) {
     <img
       className="room-image"
       src={offer.roomImageUrl}
-      alt={`${offer.roomTypeZh || offer.roomTypeSource}官网图片`}
+      alt={formatMessage(c.roomImageAlt, { room: localizedRoomName })}
       width={144}
       height={144}
       loading="lazy"
@@ -299,6 +312,7 @@ function RoomImage({ offer }: { offer: RoomOffer }) {
 }
 
 function PlanRow({ offer }: { offer: RoomOffer }) {
+  const { locale, messages: c } = useI18n();
   const stock = Math.max(
     offer.generalVacantRoom,
     offer.membershipVacantRoom,
@@ -307,12 +321,12 @@ function PlanRow({ offer }: { offer: RoomOffer }) {
     <article className="plan-row">
       <div className="plan-main">
         <span className="plan-kicker">{c.offer.officialPlanName}</span>
-        <strong>{offer.planNameZh}</strong>
+        <strong>{planName(offer.planNameSource, locale)}</strong>
         <span className="plan-source">
-          {c.offer.officialPlanSource}：{offer.planNameSource}
+          {c.offer.officialPlanSource}: {offer.planNameSource}
         </span>
         {offer.qualificationNote && (
-          <p className="qualification-note">{offer.qualificationNote}</p>
+          <p className="qualification-note">{c.offer.qualificationNote}</p>
         )}
       </div>
 
@@ -323,17 +337,21 @@ function PlanRow({ offer }: { offer: RoomOffer }) {
             : c.offer.unknownBasis}
         </span>
         <strong>
-          {formatKrw(offer.generalPrice ?? offer.membershipPrice ?? 0)}
+          {formatKrw(
+            offer.generalPrice ?? offer.membershipPrice ?? 0,
+            locale,
+          )}
         </strong>
         <div className="price-labels">
           {offer.generalPrice && (
             <span>
-              {c.offer.generalPrice} {formatKrw(offer.generalPrice)}
+              {c.offer.generalPrice} {formatKrw(offer.generalPrice, locale)}
             </span>
           )}
           {offer.membershipPrice && (
             <span>
-              {c.offer.membershipPrice} {formatKrw(offer.membershipPrice)}
+              {c.offer.membershipPrice}{" "}
+              {formatKrw(offer.membershipPrice, locale)}
             </span>
           )}
         </div>
@@ -358,6 +376,7 @@ function PlanRow({ offer }: { offer: RoomOffer }) {
 }
 
 function RoomGroup({ group }: { group: RoomGroupData }) {
+  const { locale, messages: c } = useI18n();
   const { representative: room, plans } = group;
 
   return (
@@ -366,15 +385,25 @@ function RoomGroup({ group }: { group: RoomGroupData }) {
         <RoomImage offer={room} />
         <div className="room-heading">
           <div className="offer-title-line">
-            <h4>{room.roomTypeZh}</h4>
+            <h4>{roomName(room.roomTypeSource, locale)}</h4>
             <span className={`smoking-tag smoking-${room.smokingType}`}>
               {c.smoking[room.smokingType]}
             </span>
           </div>
           <p className="source-name">
-            {c.offer.officialRoomName}：{room.roomTypeSource}
+            {c.offer.officialRoomName}: {room.roomTypeSource}
           </p>
-          <span className="room-plan-count">{plans.length} 个可订计划</span>
+          <span className="room-plan-count">
+            {formatMessage(c.units.roomPlanCount, {
+              count: plans.length,
+              planUnit: pluralUnit(
+                plans.length,
+                locale,
+                c.units.planOne,
+                c.units.planOther,
+              ),
+            })}
+          </span>
         </div>
       </div>
       <div className="room-plans">
@@ -398,7 +427,10 @@ function HotelCard({
   onRetry: (hotel: Hotel) => void;
   retrying: boolean;
 }) {
+  const { locale, messages: c } = useI18n();
   const { hotel } = state;
+  const statusText = (errorType: ErrorType | null) =>
+    errorType ? c.errors[errorType] : c.hotel.failed;
   const roomGroups =
     state.phase === "completed" ? groupOffers(state.visibleOffers) : [];
   return (
@@ -409,13 +441,15 @@ function HotelCard({
       <div className="hotel-card-header">
         <div>
           <div className="hotel-location">
-            <span>{hotel.cityZh}</span>
+            <span>{hotelCity(hotel, locale)}</span>
             <span>·</span>
             <span>
               {c.hotel.code} {hotel.hotelCode}
             </span>
           </div>
-          <h3 id={`hotel-${hotel.hotelCode}`}>{hotel.nameZh}</h3>
+          <h3 id={`hotel-${hotel.hotelCode}`}>
+            {hotelName(hotel, locale)}
+          </h3>
           <p>{hotel.nameSource}</p>
         </div>
         <a
@@ -460,16 +494,30 @@ function HotelCard({
                   {formatMessage(c.hotel.plans, {
                     rooms: roomGroups.length,
                     plans: state.visibleOffers.length,
+                    roomTypeUnit: pluralUnit(
+                      roomGroups.length,
+                      locale,
+                      c.units.roomTypeOne,
+                      c.units.roomTypeOther,
+                    ),
+                    planUnit: pluralUnit(
+                      state.visibleOffers.length,
+                      locale,
+                      c.units.planOne,
+                      c.units.planOther,
+                    ),
                   })}
                 </span>
               )}
             </div>
             <span className="queried-at">
               {formatMessage(c.hotel.queriedAt, {
-                time: formatKoreaTime(state.result.sourceQueriedAt),
+                time: formatKoreaTime(state.result.sourceQueriedAt, locale),
               })}
               <span aria-hidden="true"> · </span>
-              {(state.result.durationMs / 1000).toFixed(1)}s
+              {formatMessage(c.units.seconds, {
+                seconds: (state.result.durationMs / 1000).toFixed(1),
+              })}
             </span>
           </div>
 
@@ -513,8 +561,8 @@ function HotelCard({
                   ×
                 </span>
                 <div>
-                  <strong>{statusText(state.result.errorType)}</strong>
-                  <p>{state.result.message}</p>
+                  <strong>{c.hotel.failed}</strong>
+                  <p>{statusText(state.result.errorType)}</p>
                 </div>
               </div>
               <button
@@ -542,6 +590,7 @@ function HotelCard({
 }
 
 export default function Home() {
+  const { locale, messages: c } = useI18n();
   const [initialDates] = useState(defaultDates);
   const [selectedHotelCodes, setSelectedHotelCodes] =
     useState<string[]>(DEFAULT_HOTEL_CODES);
@@ -564,6 +613,7 @@ export default function Home() {
   const [retryingCodes, setRetryingCodes] = useState<Set<string>>(new Set());
   const resultsRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
+  const previousLocaleRef = useRef(locale);
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
@@ -590,7 +640,7 @@ export default function Home() {
       const current = readHistory(HISTORY_KEY);
       const migratedFromLegacy = current.length === 0;
       const candidates = migratedFromLegacy
-        ? readHistory(LEGACY_HISTORY_KEY)
+        ? LEGACY_HISTORY_KEYS.flatMap(readHistory)
         : current;
       const seen = new Set<string>();
       const deduped = candidates.filter((item) => {
@@ -613,6 +663,13 @@ export default function Home() {
     });
     return () => cancelAnimationFrame(frame);
   }, []);
+
+  useEffect(() => {
+    if (previousLocaleRef.current === locale) return;
+    previousLocaleRef.current = locale;
+    const frame = requestAnimationFrame(() => setFormError(""));
+    return () => cancelAnimationFrame(frame);
+  }, [locale]);
 
   useEffect(() => {
     const timers = new Set<number>();
@@ -738,7 +795,7 @@ export default function Home() {
       adultsPerRoom,
       roomCount,
       smokingPreference,
-      locale: "zh-CN",
+      locale,
       requestedAt: new Date().toISOString(),
     };
   }
@@ -943,7 +1000,7 @@ export default function Home() {
     setHistory([]);
     try {
       localStorage.removeItem(HISTORY_KEY);
-      localStorage.removeItem(LEGACY_HISTORY_KEY);
+      LEGACY_HISTORY_KEYS.forEach((key) => localStorage.removeItem(key));
     } catch {
       // The in-memory history is still cleared.
     }
@@ -963,15 +1020,18 @@ export default function Home() {
       </a>
       <header className="site-header">
         <a href="#" className="wordmark" aria-label={c.productName}>
-          <span className="wordmark-mark">韩</span>
+          <span className="wordmark-mark">{c.brandMark}</span>
           <span className="wordmark-copy">
             <strong>{c.brand}</strong>
             <small>{c.brandUtility}</small>
           </span>
         </a>
-        <div className="header-note">
-          <span className="live-dot" aria-hidden="true" />
-          {c.unofficial}
+        <div className="header-actions">
+          <div className="header-note">
+            <span className="live-dot" aria-hidden="true" />
+            {c.unofficial}
+          </div>
+          <LanguageSwitcher />
         </div>
       </header>
 
@@ -987,7 +1047,7 @@ export default function Home() {
                 (region) => (
                   <span className="route-stop" key={region.id}>
                     <span aria-hidden="true" />
-                    {region.label}
+                    {regionName(region.id, locale)}
                   </span>
                 ),
               )}
@@ -1050,7 +1110,14 @@ export default function Home() {
 
               <div className="night-count" aria-live="polite">
                 <strong>{nights}</strong>
-                <span>{c.form.night}</span>
+                <span>
+                  {pluralUnit(
+                    nights,
+                    locale,
+                    c.units.nightOne,
+                    c.units.nightOther,
+                  )}
+                </span>
               </div>
 
               <label className="field">
@@ -1116,6 +1183,24 @@ export default function Home() {
                   adults: adultsPerRoom,
                   rooms: roomCount,
                   total: totalAdults,
+                  adultUnit: pluralUnit(
+                    adultsPerRoom,
+                    locale,
+                    c.units.adultOne,
+                    c.units.adultOther,
+                  ),
+                  roomUnit: pluralUnit(
+                    roomCount,
+                    locale,
+                    c.units.roomOne,
+                    c.units.roomOther,
+                  ),
+                  totalAdultUnit: pluralUnit(
+                    totalAdults,
+                    locale,
+                    c.units.adultOne,
+                    c.units.adultOther,
+                  ),
                 })}
               </strong>
               <span>{c.form.childNote}</span>
@@ -1184,12 +1269,30 @@ export default function Home() {
                 onClick={() => applyHistory(item)}
                 key={historySignature(item)}
               >
-                <strong>{describeHotelSelection(item.hotelCodes)}</strong>
+                <strong>
+                  {describeHotelSelection(item.hotelCodes, locale)}
+                </strong>
                 <span>
-                  {formatDate(item.checkIn)} — {formatDate(item.checkOut)}
+                  {formatDate(item.checkIn, locale, c.dateIncomplete)} —{" "}
+                  {formatDate(item.checkOut, locale, c.dateIncomplete)}
                 </span>
                 <span>
-                  {item.adultsPerRoom} 人 × {item.roomCount} 室
+                  {formatMessage(c.units.peopleRooms, {
+                    adults: item.adultsPerRoom,
+                    rooms: item.roomCount,
+                    adultUnit: pluralUnit(
+                      item.adultsPerRoom,
+                      locale,
+                      c.units.adultOne,
+                      c.units.adultOther,
+                    ),
+                    roomUnit: pluralUnit(
+                      item.roomCount,
+                      locale,
+                      c.units.roomOne,
+                      c.units.roomOther,
+                    ),
+                  })}
                 </span>
               </button>
             ))}
@@ -1213,18 +1316,52 @@ export default function Home() {
                 </span>
               </div>
               <p className="criteria-summary">
-                {describeHotelSelection(queryCriteria.hotelCodes)}
+                {describeHotelSelection(queryCriteria.hotelCodes, locale)}
                 <span>·</span>
-                {formatDate(queryCriteria.checkIn)} —{" "}
-                {formatDate(queryCriteria.checkOut)}
-                <span>·</span>
-                {nightsBetween(
+                {formatDate(
                   queryCriteria.checkIn,
-                  queryCriteria.checkOut,
+                  locale,
+                  c.dateIncomplete,
                 )}{" "}
-                {c.form.night}
+                —{" "}
+                {formatDate(
+                  queryCriteria.checkOut,
+                  locale,
+                  c.dateIncomplete,
+                )}
                 <span>·</span>
-                {queryCriteria.adultsPerRoom} 人 × {queryCriteria.roomCount} 室
+                {(() => {
+                  const nightCount = nightsBetween(
+                    queryCriteria.checkIn,
+                    queryCriteria.checkOut,
+                  );
+                  return formatMessage(c.units.nightCount, {
+                    count: nightCount,
+                    nightUnit: pluralUnit(
+                      nightCount,
+                      locale,
+                      c.units.nightOne,
+                      c.units.nightOther,
+                    ),
+                  });
+                })()}
+                <span>·</span>
+                {formatMessage(c.units.peopleRooms, {
+                  adults: queryCriteria.adultsPerRoom,
+                  rooms: queryCriteria.roomCount,
+                  adultUnit: pluralUnit(
+                    queryCriteria.adultsPerRoom,
+                    locale,
+                    c.units.adultOne,
+                    c.units.adultOther,
+                  ),
+                  roomUnit: pluralUnit(
+                    queryCriteria.roomCount,
+                    locale,
+                    c.units.roomOne,
+                    c.units.roomOther,
+                  ),
+                })}
                 <span>·</span>
                 {c.smoking[queryCriteria.smokingPreference]}
               </p>
@@ -1253,7 +1390,7 @@ export default function Home() {
                     })
                   : queryStartedAt
                     ? formatMessage(c.results.startedAt, {
-                        time: formatKoreaTime(queryStartedAt),
+                        time: formatKoreaTime(queryStartedAt, locale),
                       })
                     : ""}
               </span>
@@ -1277,7 +1414,16 @@ export default function Home() {
             <div className="inline-alert alert-error">
               <span aria-hidden="true">!</span>
               <p>
-                {c.partialFailure}（{failedCount} 家）
+                {c.partialFailure}{" "}
+                {formatMessage(c.units.hotelCount, {
+                  count: failedCount,
+                  hotelUnit: pluralUnit(
+                    failedCount,
+                    locale,
+                    c.units.hotelOne,
+                    c.units.hotelOther,
+                  ),
+                })}
               </p>
             </div>
           )}
@@ -1301,9 +1447,10 @@ export default function Home() {
               className="button button-secondary"
               disabled={isRunning}
               onClick={() =>
-                runSearch({
-                  ...queryCriteria,
-                  requestedAt: new Date().toISOString(),
+                  runSearch({
+                    ...queryCriteria,
+                    locale,
+                    requestedAt: new Date().toISOString(),
                 })
               }
             >
@@ -1342,7 +1489,7 @@ export default function Home() {
 
       <footer>
         <div>
-          <span className="wordmark-mark">韩</span>
+          <span className="wordmark-mark">{c.brandMark}</span>
           <div>
             <strong>{c.footer.title}</strong>
             <p>{c.footer.description}</p>

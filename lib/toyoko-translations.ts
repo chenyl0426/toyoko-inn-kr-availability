@@ -1,3 +1,5 @@
+import type { Locale } from "./types";
+
 const ROOM_NAME_ZH: Record<string, string> = {
   "海側ダブル(駐車不可)": "海景大床房（不可停车）",
   "海側ダブル(駐車パッケージ)": "海景大床房（含停车）",
@@ -57,6 +59,130 @@ const ROOM_NAME_ZH: Record<string, string> = {
   "ワイドスペースシングル（電車側）": "宽敞单人房（铁路侧）",
 };
 
+const ROOM_NAME_EN: Record<string, string> = {
+  "海側ダブル(駐車不可)": "Sea-view Double (No Parking)",
+  "海側ダブル(駐車パッケージ)": "Sea-view Double (Parking Package)",
+  "海側ツイン(駐車不可)": "Sea-view Twin (No Parking)",
+  "海側ツイン(駐車パッケージ)": "Sea-view Twin (Parking Package)",
+  "海側デラックスツイン(駐車パッケージ)":
+    "Sea-view Deluxe Twin (Parking Package)",
+  "海側トリプル(駐車パッケージ)": "Sea-view Triple (Parking Package)",
+  エグゼクティブダブル: "Executive Double",
+  エコノミーシングル: "Economy Single",
+  エコノミーダブル: "Economy Double",
+  "エコノミーダブル(駐車不可)": "Economy Double (No Parking)",
+  エコノミーダブルシティビュー: "City-view Economy Double",
+  コネクティングシングル: "Connecting Single",
+  コネクティングタブル: "Connecting Double",
+  コネクティングツイン: "Connecting Twin",
+  "コネクティングツイン(駐車不可)": "Connecting Twin (No Parking)",
+  コネクティングミニダブル: "Connecting Mini Double",
+  シティービューエコノミーダブル: "City-view Economy Double",
+  シティービューシングル: "City-view Single",
+  シングル: "Single",
+  "シングル(駐車不可)": "Single (No Parking)",
+  スイートダブル: "Double Suite",
+  スイートツイン: "Twin Suite",
+  スペシャルプライスシングル: "Special-price Single",
+  "スペシャルプライスシングル（電車側）":
+    "Special-price Single (Train Side)",
+  "スペシャルプライスダブル（電車側）":
+    "Special-price Double (Train Side)",
+  ダブル: "Double",
+  "ダブル(駐車不可)": "Double (No Parking)",
+  ツイン: "Twin",
+  "ツイン(駐車不可)": "Twin (No Parking)",
+  デラックスシングル: "Deluxe Single",
+  デラックスダブル: "Deluxe Double",
+  デラックスツイン: "Deluxe Twin",
+  "デラックスツイン(駐車パッケージ)":
+    "Deluxe Twin (Parking Package)",
+  トリプル: "Triple",
+  ハートフル: "Accessible Room",
+  ハートフルシングル: "Accessible Single",
+  ハートフルツイン: "Accessible Twin",
+  "ハートフルツイン(駐車不可)": "Accessible Twin (No Parking)",
+  ハートフルルーム: "Accessible Room",
+  ハートフルルームシングル: "Accessible Single",
+  ハーバービューダブル: "Harbor-view Double",
+  ハーバービューツイン: "Harbor-view Twin",
+  ハリウッドツイン: "Hollywood Twin",
+  ビジネスシングル: "Business Single",
+  ファミリー: "Family Room",
+  ファミリーツイン: "Family Twin",
+  "ファミリーツイン(駐車不可)": "Family Twin (No Parking)",
+  "ファミリーツイン(駐車パッケージ)":
+    "Family Twin (Parking Package)",
+  ファミリーツインB: "Family Twin B",
+  プレミアムファミリールーム: "Premium Family Room",
+  ミニダブル: "Mini Double",
+  レジダンスシングル: "Residence Single",
+  レジダンスダブル: "Residence Double",
+  レジデンスタイプダブル: "Residence-type Double",
+  レジデンスタイプデラックスダブル: "Residence-type Deluxe Double",
+  "ワイドスペースシングル（電車側）": "Wide-space Single (Train Side)",
+};
+
+const ROOM_NAME_KO: Record<string, string> = {
+  "海側ダブル(駐車不可)": "바다 전망 더블(주차 불가)",
+  "海側ダブル(駐車パッケージ)": "바다 전망 더블(주차 패키지)",
+  "海側ツイン(駐車不可)": "바다 전망 트윈(주차 불가)",
+  "海側ツイン(駐車パッケージ)": "바다 전망 트윈(주차 패키지)",
+  "海側デラックスツイン(駐車パッケージ)":
+    "바다 전망 디럭스 트윈(주차 패키지)",
+  "海側トリプル(駐車パッケージ)": "바다 전망 트리플(주차 패키지)",
+  エグゼクティブダブル: "이그제큐티브 더블",
+  エコノミーシングル: "이코노미 싱글",
+  エコノミーダブル: "이코노미 더블",
+  "エコノミーダブル(駐車不可)": "이코노미 더블(주차 불가)",
+  エコノミーダブルシティビュー: "시티뷰 이코노미 더블",
+  コネクティングシングル: "커넥팅 싱글",
+  コネクティングタブル: "커넥팅 더블",
+  コネクティングツイン: "커넥팅 트윈",
+  "コネクティングツイン(駐車不可)": "커넥팅 트윈(주차 불가)",
+  コネクティングミニダブル: "커넥팅 미니 더블",
+  シティービューエコノミーダブル: "시티뷰 이코노미 더블",
+  シティービューシングル: "시티뷰 싱글",
+  シングル: "싱글",
+  "シングル(駐車不可)": "싱글(주차 불가)",
+  スイートダブル: "더블 스위트",
+  スイートツイン: "트윈 스위트",
+  スペシャルプライスシングル: "특가 싱글",
+  "スペシャルプライスシングル（電車側）": "특가 싱글(철도 방향)",
+  "スペシャルプライスダブル（電車側）": "특가 더블(철도 방향)",
+  ダブル: "더블",
+  "ダブル(駐車不可)": "더블(주차 불가)",
+  ツイン: "트윈",
+  "ツイン(駐車不可)": "트윈(주차 불가)",
+  デラックスシングル: "디럭스 싱글",
+  デラックスダブル: "디럭스 더블",
+  デラックスツイン: "디럭스 트윈",
+  "デラックスツイン(駐車パッケージ)": "디럭스 트윈(주차 패키지)",
+  トリプル: "트리플",
+  ハートフル: "배리어프리 객실",
+  ハートフルシングル: "배리어프리 싱글",
+  ハートフルツイン: "배리어프리 트윈",
+  "ハートフルツイン(駐車不可)": "배리어프리 트윈(주차 불가)",
+  ハートフルルーム: "배리어프리 객실",
+  ハートフルルームシングル: "배리어프리 싱글",
+  ハーバービューダブル: "하버뷰 더블",
+  ハーバービューツイン: "하버뷰 트윈",
+  ハリウッドツイン: "할리우드 트윈",
+  ビジネスシングル: "비즈니스 싱글",
+  ファミリー: "패밀리룸",
+  ファミリーツイン: "패밀리 트윈",
+  "ファミリーツイン(駐車不可)": "패밀리 트윈(주차 불가)",
+  "ファミリーツイン(駐車パッケージ)": "패밀리 트윈(주차 패키지)",
+  ファミリーツインB: "패밀리 트윈 B",
+  プレミアムファミリールーム: "프리미엄 패밀리룸",
+  ミニダブル: "미니 더블",
+  レジダンスシングル: "레지던스 싱글",
+  レジダンスダブル: "레지던스 더블",
+  レジデンスタイプダブル: "레지던스형 더블",
+  レジデンスタイプデラックスダブル: "레지던스형 디럭스 더블",
+  "ワイドスペースシングル（電車側）": "와이드 스페이스 싱글(철도 방향)",
+};
+
 const PLAN_NAME_ZH: Record<string, string> = {
   "【休日限定】お得プラン！": "节假日限定优惠计划",
   "【曜日限定】お得プラン！": "指定星期限定优惠计划",
@@ -74,10 +200,72 @@ const PLAN_NAME_ZH: Record<string, string> = {
   レイトチェックアウト: "延迟退房计划",
 };
 
+const PLAN_NAME_EN: Record<string, string> = {
+  "【休日限定】お得プラン！": "Holiday-only Special Offer",
+  "【曜日限定】お得プラン！": "Day-of-week Special Offer",
+  "＜最大22時間＞ロングステイ12‐翌10時":
+    "Long Stay, Up to 22 Hours (12:00 PM–10:00 AM Next Day)",
+  "宿泊＋デイユースプラン（翌15時まで）":
+    "Stay + Day-use Plan (Until 3:00 PM Next Day)",
+  "推し活応援！～ぬいと一緒にお泊り会プラン～":
+    "Fan Activity Support: Plush-toy Sleepover Plan",
+  学割プラン: "Student Discount Plan",
+  "早割14日前 10％OFF": "Book 14 Days Early and Save 10%",
+  "エコノミーシングル（窓なし、地下フロアあり）10%OFF":
+    "Economy Single (No Window; Basement Floor Possible) – 10% Off",
+  スタンダードプラン: "Standard Plan",
+  ひとり利用プラン: "Single-occupancy Plan",
+  レイトチェックアウト: "Late Checkout Plan",
+};
+
+const PLAN_NAME_KO: Record<string, string> = {
+  "【休日限定】お得プラン！": "휴일 한정 특가 플랜",
+  "【曜日限定】お得プラン！": "요일 한정 특가 플랜",
+  "＜最大22時間＞ロングステイ12‐翌10時":
+    "최대 22시간 롱스테이 플랜(12시~다음 날 10시)",
+  "宿泊＋デイユースプラン（翌15時まで）":
+    "숙박 + 데이 유스 플랜(다음 날 15시까지)",
+  "推し活応援！～ぬいと一緒にお泊り会プラン～":
+    "팬 활동 응원 플랜(인형과 함께하는 숙박)",
+  学割プラン: "학생 할인 플랜",
+  "早割14日前 10％OFF": "14일 전 조기 예약 10% 할인",
+  "エコノミーシングル（窓なし、地下フロアあり）10%OFF":
+    "이코노미 싱글 할인 플랜(창문 없음, 지하층 배정 가능, 10% 할인)",
+  スタンダードプラン: "스탠더드 플랜",
+  ひとり利用プラン: "1인 이용 플랜",
+  レイトチェックアウト: "레이트 체크아웃 플랜",
+};
+
 export function roomNameZh(source: string) {
   return ROOM_NAME_ZH[source] ?? "官网限定房型";
 }
 
 export function planNameZh(source: string) {
   return PLAN_NAME_ZH[source] ?? "官网限定住宿计划";
+}
+
+export function roomName(source: string, locale: Locale) {
+  switch (locale) {
+    case "zh-CN":
+      return roomNameZh(source);
+    case "en-US":
+      return ROOM_NAME_EN[source] ?? "Official website room type";
+    case "ja-JP":
+      return source;
+    case "ko-KR":
+      return ROOM_NAME_KO[source] ?? "공식 웹사이트 객실 유형";
+  }
+}
+
+export function planName(source: string, locale: Locale) {
+  switch (locale) {
+    case "zh-CN":
+      return planNameZh(source);
+    case "en-US":
+      return PLAN_NAME_EN[source] ?? "Official website accommodation plan";
+    case "ja-JP":
+      return source;
+    case "ko-KR":
+      return PLAN_NAME_KO[source] ?? "공식 웹사이트 숙박 플랜";
+  }
 }
