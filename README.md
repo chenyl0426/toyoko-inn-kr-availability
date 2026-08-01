@@ -9,9 +9,6 @@
 ## 在线体验
 
 - Vercel：[toyoko-inn-korea-availability.vercel.app](https://toyoko-inn-korea-availability.vercel.app)
-- ChatGPT Page：[toyoko-korea-rooms.xiongmiao2004.chatgpt.site](https://toyoko-korea-rooms.xiongmiao2004.chatgpt.site)
-
-> 上述地址为部署占位符，上线后请替换为正式地址。
 
 ## 功能亮点
 
