@@ -394,9 +394,7 @@ export function DateRangePicker({
               }}
               onChange={(event) => onCheckInChange(cleanDraft(event.target.value))}
             />
-            <span className="calendar-glyph" aria-hidden="true">
-              日
-            </span>
+            <span className="calendar-glyph" aria-hidden="true" />
           </div>
         </div>
 
@@ -446,9 +444,7 @@ export function DateRangePicker({
                 onCheckOutChange(cleanDraft(event.target.value))
               }
             />
-            <span className="calendar-glyph" aria-hidden="true">
-              日
-            </span>
+            <span className="calendar-glyph" aria-hidden="true" />
           </div>
         </div>
       </div>

@@ -1,3 +1,14 @@
+export function formatMessage(
+  text: string,
+  values: Record<string, string | number>,
+) {
+  return Object.entries(values).reduce(
+    (result, [key, value]) =>
+      result.replaceAll(`{${key}}`, String(value)),
+    text,
+  );
+}
+
 export const zhCN = {
   brand: "韩国东横INN房况查询",
   brandUtility: "KOREA STAY FINDER",
@@ -20,12 +31,11 @@ export const zhCN = {
   noHistory: "这里会显示最近使用的查询条件，选择后仍需手动查询。",
   clearHistory: "清空",
   allLongNotice: "将查询全部 13 家酒店，通常需要更长时间。",
-  smokingFallback:
-    "未发现符合条件的禁烟房；以下包含该酒店当前可订的吸烟房。",
   partialFailure: "部分酒店查询失败，当前结果可能不完整。",
   expired: "该结果不是当前实时结果，请重新查询。",
   fields: {
     region: "地区",
+    hotels: "酒店选择",
     checkIn: "入住日期",
     checkOut: "退房日期",
     adultsPerRoom: "每室成人数",
@@ -34,14 +44,12 @@ export const zhCN = {
   },
   smoking: {
     any: "不限",
-    nonSmokingPreferred: "禁烟优先",
-    smokingOnly: "吸烟",
     nonSmoking: "禁烟",
     smoking: "吸烟",
     unknown: "未知",
   },
   form: {
-    title: "设置一次，查询整座城市",
+    title: "选择酒店，一次查询",
     subtitle: "官网只会在你点击查询后被访问。",
     night: "晚",
     roomsSummary: "每室 {adults} 位成人 × {rooms} 间房，共 {total} 位成人",
@@ -50,6 +58,19 @@ export const zhCN = {
     invalidDate: "请输入有效日期，格式为 YYYY-MM-DD。",
     checkInPast: "入住日期不能早于韩国当地今天。",
     invalidCheckOut: "退房日期必须晚于入住日期。",
+    noHotels: "请至少选择一家酒店。",
+  },
+  hotels: {
+    panelTitle: "按地区选择酒店",
+    panelHint: "展开地区后，可全选或逐家选择。",
+    allHotels: "韩国全部",
+    selectAll: "全选",
+    done: "完成",
+    selectedNone: "尚未选择酒店",
+    selectedAll: "韩国全部 · {count} 家",
+    selectedRegion: "{region} · {count} 家",
+    selectedMixed: "已选 {count} 家酒店",
+    selectedCount: "已选 {selected} / {total} 家",
   },
   history: {
     title: "最近使用",
@@ -60,7 +81,7 @@ export const zhCN = {
     searching: "查询中",
     hasRoom: "有房",
     noRoom: "无房",
-    noPreferenceMatch: "有房，偏好无匹配",
+    noPreferenceMatch: "有房，类别无匹配",
     incomplete: "结果不完整",
     completed: "已完成 {done} / 共 {total} 家",
     startedAt: "开始于 {time}（韩国时间）",
@@ -84,7 +105,7 @@ export const zhCN = {
     failed: "查询失败",
     retry: "仅重试此酒店",
     confirmOfficial: "在官网重新确认",
-    noPreference: "酒店有可订客房，但没有符合当前吸烟偏好的房型。",
+    noPreference: "酒店有可订客房，但没有符合当前吸烟类别的房型。",
   },
   errors: {
     timeout: "请求超时",

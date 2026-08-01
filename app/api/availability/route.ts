@@ -1,6 +1,6 @@
 import { HOTELS, FORM_LIMITS } from "@/lib/hotels";
 import { queryHotelAvailability } from "@/lib/toyoko-adapter";
-import type { SearchCriteria } from "@/lib/types";
+import type { StayCriteria } from "@/lib/types";
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
@@ -59,15 +59,11 @@ export async function GET(request: Request) {
     return Response.json({ error: "查询条件无效" }, { status: 400 });
   }
 
-  const criteria: SearchCriteria = {
-    regionId: "all",
+  const criteria: StayCriteria = {
     checkIn,
     checkOut,
     adultsPerRoom,
     roomCount,
-    smokingPreference: "any",
-    locale: "zh-CN",
-    requestedAt: new Date().toISOString(),
   };
 
   const key = [hotelCode, checkIn, checkOut, adultsPerRoom, roomCount].join(":");

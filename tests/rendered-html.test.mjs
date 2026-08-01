@@ -33,9 +33,50 @@ test("server-renders the finished product identity and search form", async () =>
   assert.match(html, /韩国东横INN房况查询/);
   assert.match(html, /入住日期/);
   assert.match(html, /退房日期/);
+  assert.match(html, /酒店选择/);
+  assert.match(html, /不限/);
+  assert.match(html, /禁烟/);
+  assert.match(html, /吸烟/);
   assert.match(html, /placeholder="YYYY-MM-DD"/);
   assert.match(html, /href="#search-form"/);
   assert.doesNotMatch(html, /住见韩国|Your site is taking shape|codex-preview/);
+});
+
+test("locks the hotel selector, strict smoking categories, and compact room media regressions", async () => {
+  const [page, selector, picker, types, styles] = await Promise.all([
+    readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/hotel-selector.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/date-range-picker.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../lib/types.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(selector, /REGION_GROUPS/);
+  assert.match(selector, /toggleRegion/);
+  assert.match(selector, /toggleHotel/);
+  assert.match(selector, /toggleAllHotels/);
+  assert.match(selector, /indeterminate = partlySelected/);
+  assert.match(selector, /role="group"/);
+  assert.match(page, /hotelsForCodes\(criteria\.hotelCodes\)/);
+  assert.match(page, /\["any", "nonSmoking", "smoking"\]/);
+  assert.match(
+    page,
+    /preference === "any" \|\| offer\.smokingType === preference/,
+  );
+  assert.doesNotMatch(types, /nonSmokingPreferred|smokingOnly/);
+  assert.doesNotMatch(types, /isSmokingFallback|hasSmokingFallback/);
+  assert.doesNotMatch(picker, />\s*日\s*</);
+  assert.match(styles, /\.calendar-glyph::before/);
+  assert.match(
+    styles,
+    /label:hover input:not\(:checked\) \+ span/,
+  );
+  assert.match(styles, /--room-thumb-size: 144px/);
+  assert.match(styles, /aspect-ratio: 1/);
+  assert.match(
+    styles,
+    /search-surface-enter 420ms 80ms var\(--motion-emphasized\) backwards/,
+  );
 });
 
 test("keeps Material interactions, date entry, source data, and room images wired", async () => {

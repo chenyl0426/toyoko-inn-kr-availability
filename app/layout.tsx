@@ -4,7 +4,7 @@ import "./globals.css";
 
 const title = "韩国东横INN房况查询";
 const description =
-  "一次查询韩国同城全部东横 INN 的实时余房、房型、住宿计划和官网价格。";
+  "按地区选择韩国东横 INN，一次比较所选酒店的实时余房、房型、住宿计划和官网价格。";
 
 export const viewport: Viewport = {
   colorScheme: "light",
@@ -25,7 +25,7 @@ export async function generateMetadata(): Promise<Metadata> {
       ? "http"
       : "https";
   const origin = `${protocol}://${host}`;
-  const previewImage = new URL("/og-material.png", origin).toString();
+  const previewImage = new URL("/og-hotel-selector.png", origin).toString();
 
   return {
     title,
@@ -35,7 +35,7 @@ export async function generateMetadata(): Promise<Metadata> {
       title,
       description,
       locale: "zh_CN",
-      images: [{ url: previewImage, width: 1732, height: 909, alt: title }],
+      images: [{ url: previewImage, width: 1731, height: 909, alt: title }],
     },
     twitter: {
       card: "summary_large_image",

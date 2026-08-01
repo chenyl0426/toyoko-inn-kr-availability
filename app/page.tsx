@@ -2,13 +2,23 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { DateRangePicker } from "@/app/date-range-picker";
-import { FORM_LIMITS, REGION_OPTIONS, hotelsForRegion } from "@/lib/hotels";
-import { zhCN as c } from "@/lib/i18n";
+import {
+  HotelSelector,
+  describeHotelSelection,
+} from "@/app/hotel-selector";
+import {
+  FORM_LIMITS,
+  HOTELS,
+  REGION_OPTIONS,
+  hotelsForCodes,
+  hotelsForRegion,
+  normalizeHotelCodes,
+} from "@/lib/hotels";
+import { formatMessage, zhCN as c } from "@/lib/i18n";
 import type {
   ErrorType,
   Hotel,
   HotelAvailability,
-  RegionId,
   RoomOffer,
   SearchCriteria,
   SmokingPreference,
@@ -18,14 +28,21 @@ import type {
 type HistoryCriteria = Omit<SearchCriteria, "requestedAt">;
 type ResultView = "all" | "available" | "failed";
 
-const HISTORY_KEY = "toyoko-korea-search-history-v1";
+const HISTORY_KEY = "toyoko-korea-search-history-v2";
+const LEGACY_HISTORY_KEY = "toyoko-korea-search-history-v1";
 const MAX_HISTORY = 10;
 const MAX_CONCURRENCY = 3;
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const ACTIVE_HOTEL_CODES = normalizeHotelCodes(
+  HOTELS.map((hotel) => hotel.hotelCode),
+);
+const DEFAULT_HOTEL_CODES = hotelsForRegion("seoul").map(
+  (hotel) => hotel.hotelCode,
+);
 
 function historySignature(item: HistoryCriteria) {
   return [
-    item.regionId,
+    item.hotelCodes.join(","),
     item.checkIn,
     item.checkOut,
     item.adultsPerRoom,
@@ -35,27 +52,74 @@ function historySignature(item: HistoryCriteria) {
   ].join("|");
 }
 
-function isHistoryCriteria(value: unknown): value is HistoryCriteria {
-  if (!value || typeof value !== "object") return false;
-  const item = value as Partial<HistoryCriteria>;
-  return (
-    REGION_OPTIONS.some((region) => region.id === item.regionId) &&
-    typeof item.checkIn === "string" &&
-    typeof item.checkOut === "string" &&
-    isValidDate(item.checkIn) &&
-    isValidDate(item.checkOut) &&
-    item.checkOut > item.checkIn &&
-    Number.isInteger(item.adultsPerRoom) &&
-    item.adultsPerRoom! >= FORM_LIMITS.adultsPerRoom.min &&
-    item.adultsPerRoom! <= FORM_LIMITS.adultsPerRoom.max &&
-    Number.isInteger(item.roomCount) &&
-    item.roomCount! >= FORM_LIMITS.roomCount.min &&
-    item.roomCount! <= FORM_LIMITS.roomCount.max &&
-    ["any", "nonSmokingPreferred", "smokingOnly"].includes(
-      item.smokingPreference ?? "",
-    ) &&
-    item.locale === "zh-CN"
+function normalizeSmokingPreference(
+  value: unknown,
+): SmokingPreference | null {
+  if (value === "any" || value === "nonSmoking" || value === "smoking") {
+    return value;
+  }
+  if (value === "nonSmokingPreferred") return "nonSmoking";
+  if (value === "smokingOnly") return "smoking";
+  return null;
+}
+
+function normalizeHistoryCriteria(value: unknown): HistoryCriteria | null {
+  if (!value || typeof value !== "object") return null;
+  const item = value as Record<string, unknown>;
+  const smokingPreference = normalizeSmokingPreference(
+    item.smokingPreference,
   );
+  const checkIn = item.checkIn;
+  const checkOut = item.checkOut;
+  const adultsPerRoom = item.adultsPerRoom;
+  const roomCount = item.roomCount;
+
+  let hotelCodes: string[] = [];
+  if (Array.isArray(item.hotelCodes)) {
+    hotelCodes = normalizeHotelCodes(
+      item.hotelCodes.filter((code): code is string => typeof code === "string"),
+    );
+  } else if (typeof item.regionId === "string") {
+    const legacyRegion = REGION_OPTIONS.find(
+      (region) => region.id === item.regionId,
+    );
+    if (legacyRegion) {
+      hotelCodes = hotelsForRegion(legacyRegion.id).map(
+        (hotel) => hotel.hotelCode,
+      );
+    }
+  }
+
+  if (
+    hotelCodes.length === 0 ||
+    typeof checkIn !== "string" ||
+    typeof checkOut !== "string" ||
+    !isValidDate(checkIn) ||
+    !isValidDate(checkOut) ||
+    checkOut <= checkIn ||
+    typeof adultsPerRoom !== "number" ||
+    !Number.isInteger(adultsPerRoom) ||
+    adultsPerRoom < FORM_LIMITS.adultsPerRoom.min ||
+    adultsPerRoom > FORM_LIMITS.adultsPerRoom.max ||
+    typeof roomCount !== "number" ||
+    !Number.isInteger(roomCount) ||
+    roomCount < FORM_LIMITS.roomCount.min ||
+    roomCount > FORM_LIMITS.roomCount.max ||
+    !smokingPreference ||
+    item.locale !== "zh-CN"
+  ) {
+    return null;
+  }
+
+  return {
+    hotelCodes,
+    checkIn,
+    checkOut,
+    adultsPerRoom,
+    roomCount,
+    smokingPreference,
+    locale: "zh-CN",
+  };
 }
 
 function isValidDate(date: string) {
@@ -133,43 +197,16 @@ function formatKrw(amount: number) {
   }).format(amount);
 }
 
-function template(text: string, values: Record<string, string | number>) {
-  return Object.entries(values).reduce(
-    (result, [key, value]) =>
-      result.replaceAll(`{${key}}`, String(value)),
-    text,
-  );
-}
-
-function sortedOffers(
+function visibleOffersForPreference(
   result: HotelAvailability,
   preference: SmokingPreference,
 ) {
-  const hasNonSmoking = result.offers.some(
-    (offer) => offer.smokingType === "nonSmoking",
-  );
-
-  const visible =
-    preference === "smokingOnly"
-      ? result.offers.filter((offer) => offer.smokingType === "smoking")
-      : result.offers;
-
-  const rank = (offer: RoomOffer) => {
-    if (preference !== "nonSmokingPreferred") return 0;
-    if (offer.smokingType === "nonSmoking") return 0;
-    if (offer.smokingType === "unknown") return 1;
-    return 2;
-  };
-
-  return visible
-    .map((offer) => ({
-      ...offer,
-      isSmokingFallback:
-        preference === "nonSmokingPreferred" &&
-        !hasNonSmoking &&
-        offer.smokingType === "smoking",
-    }))
-    .sort((a, b) => rank(a) - rank(b) || a.priceAmount - b.priceAmount);
+  return result.offers
+    .filter(
+      (offer) =>
+        preference === "any" || offer.smokingType === preference,
+    )
+    .sort((a, b) => a.priceAmount - b.priceAmount);
 }
 
 function toCompletedState(
@@ -177,7 +214,7 @@ function toCompletedState(
   result: HotelAvailability,
   preference: SmokingPreference,
 ): UiHotelState {
-  const visibleOffers = sortedOffers(result, preference);
+  const visibleOffers = visibleOffersForPreference(result, preference);
   return {
     phase: "completed",
     hotel,
@@ -185,9 +222,6 @@ function toCompletedState(
     visibleOffers,
     preferenceNoMatch:
       result.status === "available" && visibleOffers.length === 0,
-    hasSmokingFallback: visibleOffers.some(
-      (offer) => offer.isSmokingFallback,
-    ),
   };
 }
 
@@ -255,8 +289,8 @@ function RoomImage({ offer }: { offer: RoomOffer }) {
       className="room-image"
       src={offer.roomImageUrl}
       alt={`${offer.roomTypeZh || offer.roomTypeSource}官网图片`}
-      width={800}
-      height={500}
+      width={144}
+      height={144}
       loading="lazy"
       referrerPolicy="no-referrer"
       onError={() => setHasError(true)}
@@ -304,7 +338,7 @@ function PlanRow({ offer }: { offer: RoomOffer }) {
           )}
         </div>
         <span className="stock-note">
-          {template(c.offer.stock, { count: stock })}
+          {formatMessage(c.offer.stock, { count: stock })}
         </span>
       </div>
 
@@ -325,10 +359,9 @@ function PlanRow({ offer }: { offer: RoomOffer }) {
 
 function RoomGroup({ group }: { group: RoomGroupData }) {
   const { representative: room, plans } = group;
-  const hasFallback = plans.some((plan) => plan.isSmokingFallback);
 
   return (
-    <section className={`room-group${hasFallback ? " is-fallback" : ""}`}>
+    <section className="room-group">
       <div className="room-overview">
         <RoomImage offer={room} />
         <div className="room-heading">
@@ -411,7 +444,11 @@ function HotelCard({
         <>
           <div className="hotel-result-summary">
             <div>
-              {state.result.status === "available" ? (
+              {state.preferenceNoMatch ? (
+                <StatusPill tone="warning">
+                  {c.results.noPreferenceMatch}
+                </StatusPill>
+              ) : state.result.status === "available" ? (
                 <StatusPill tone="live">{c.hotel.available}</StatusPill>
               ) : state.result.status === "soldOut" ? (
                 <StatusPill tone="muted">{c.hotel.soldOut}</StatusPill>
@@ -420,7 +457,7 @@ function HotelCard({
               )}
               {state.result.status === "available" && (
                 <span className="offer-count">
-                  {template(c.hotel.plans, {
+                  {formatMessage(c.hotel.plans, {
                     rooms: roomGroups.length,
                     plans: state.visibleOffers.length,
                   })}
@@ -428,20 +465,13 @@ function HotelCard({
               )}
             </div>
             <span className="queried-at">
-              {template(c.hotel.queriedAt, {
+              {formatMessage(c.hotel.queriedAt, {
                 time: formatKoreaTime(state.result.sourceQueriedAt),
               })}
               <span aria-hidden="true"> · </span>
               {(state.result.durationMs / 1000).toFixed(1)}s
             </span>
           </div>
-
-          {state.hasSmokingFallback && (
-            <div className="inline-alert alert-warning">
-              <span aria-hidden="true">!</span>
-              <p>{c.smokingFallback}</p>
-            </div>
-          )}
 
           {state.preferenceNoMatch && (
             <div className="empty-state compact">
@@ -513,13 +543,14 @@ function HotelCard({
 
 export default function Home() {
   const [initialDates] = useState(defaultDates);
-  const [regionId, setRegionId] = useState<RegionId>("seoul");
+  const [selectedHotelCodes, setSelectedHotelCodes] =
+    useState<string[]>(DEFAULT_HOTEL_CODES);
   const [checkIn, setCheckIn] = useState(initialDates.checkIn);
   const [checkOut, setCheckOut] = useState(initialDates.checkOut);
   const [adultsPerRoom, setAdultsPerRoom] = useState(1);
   const [roomCount, setRoomCount] = useState(1);
   const [smokingPreference, setSmokingPreference] =
-    useState<SmokingPreference>("nonSmokingPreferred");
+    useState<SmokingPreference>("any");
   const [formError, setFormError] = useState("");
   const [history, setHistory] = useState<HistoryCriteria[]>([]);
   const [hotelStates, setHotelStates] = useState<UiHotelState[]>([]);
@@ -536,24 +567,45 @@ export default function Home() {
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => {
-      try {
-        const stored: unknown = JSON.parse(
-          localStorage.getItem(HISTORY_KEY) ?? "[]",
-        );
-        if (Array.isArray(stored)) {
-          const seen = new Set<string>();
-          const deduped = stored.filter(isHistoryCriteria).filter((item) => {
-            const signature = historySignature(item);
-            if (seen.has(signature)) return false;
-            seen.add(signature);
-            return true;
-          });
-          setHistory(deduped.slice(0, MAX_HISTORY));
-          if (deduped[0]?.regionId) setRegionId(deduped[0].regionId);
-        }
-      } catch {
+      const readHistory = (key: string) => {
         try {
-          localStorage.removeItem(HISTORY_KEY);
+          const stored: unknown = JSON.parse(
+            localStorage.getItem(key) ?? "[]",
+          );
+          return Array.isArray(stored)
+            ? stored
+                .map(normalizeHistoryCriteria)
+                .filter((item): item is HistoryCriteria => item !== null)
+            : [];
+        } catch {
+          try {
+            localStorage.removeItem(key);
+          } catch {
+            // Search history is optional when browser storage is unavailable.
+          }
+          return [];
+        }
+      };
+
+      const current = readHistory(HISTORY_KEY);
+      const migratedFromLegacy = current.length === 0;
+      const candidates = migratedFromLegacy
+        ? readHistory(LEGACY_HISTORY_KEY)
+        : current;
+      const seen = new Set<string>();
+      const deduped = candidates.filter((item) => {
+        const signature = historySignature(item);
+        if (seen.has(signature)) return false;
+        seen.add(signature);
+        return true;
+      });
+      const next = deduped.slice(0, MAX_HISTORY);
+      setHistory(next);
+      if (next[0]) setSelectedHotelCodes([...next[0].hotelCodes]);
+
+      if (migratedFromLegacy && next.length > 0) {
+        try {
+          localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
         } catch {
           // Search history is optional when browser storage is unavailable.
         }
@@ -647,9 +699,8 @@ export default function Home() {
         : { className: "is-none", label: c.results.noRoom };
 
   const showFieldErrors = Boolean(formError);
-  const regionInvalid =
-    showFieldErrors &&
-    !REGION_OPTIONS.some((region) => region.id === regionId);
+  const hotelSelectionInvalid =
+    showFieldErrors && selectedHotelCodes.length === 0;
   const checkInInvalid =
     showFieldErrors &&
     (!isValidDate(checkIn) || checkIn < koreaToday());
@@ -681,7 +732,7 @@ export default function Home() {
 
   function currentCriteria(): SearchCriteria {
     return {
-      regionId,
+      hotelCodes: [...selectedHotelCodes],
       checkIn,
       checkOut,
       adultsPerRoom,
@@ -693,8 +744,10 @@ export default function Home() {
   }
 
   function validate(criteria: SearchCriteria) {
+    if (criteria.hotelCodes.length === 0) return c.form.noHotels;
     if (
-      !REGION_OPTIONS.some((region) => region.id === criteria.regionId) ||
+      normalizeHotelCodes(criteria.hotelCodes).length !==
+        criteria.hotelCodes.length ||
       !criteria.checkIn ||
       !criteria.checkOut ||
       !criteria.adultsPerRoom ||
@@ -725,7 +778,7 @@ export default function Home() {
 
   function saveHistory(criteria: SearchCriteria) {
     const value: HistoryCriteria = {
-      regionId: criteria.regionId,
+      hotelCodes: [...criteria.hotelCodes],
       checkIn: criteria.checkIn,
       checkOut: criteria.checkOut,
       adultsPerRoom: criteria.adultsPerRoom,
@@ -774,7 +827,7 @@ export default function Home() {
       return;
     }
 
-    const hotels = hotelsForRegion(criteria.regionId);
+    const hotels = hotelsForCodes(criteria.hotelCodes);
     const startedAt = Date.now();
     const collected: HotelAvailability[] = [];
     let cursor = 0;
@@ -876,7 +929,7 @@ export default function Home() {
   }
 
   function applyHistory(item: HistoryCriteria) {
-    setRegionId(item.regionId);
+    setSelectedHotelCodes([...item.hotelCodes]);
     setCheckIn(item.checkIn);
     setCheckOut(item.checkOut);
     setAdultsPerRoom(item.adultsPerRoom);
@@ -890,6 +943,7 @@ export default function Home() {
     setHistory([]);
     try {
       localStorage.removeItem(HISTORY_KEY);
+      localStorage.removeItem(LEGACY_HISTORY_KEY);
     } catch {
       // The in-memory history is still cleared.
     }
@@ -968,25 +1022,20 @@ export default function Home() {
             aria-describedby={formError ? "search-form-error" : undefined}
           >
             <div className="form-grid">
-              <label className="field field-region">
-                <span>{c.fields.region}</span>
-                <select
-                  name="region"
-                  required
-                  aria-invalid={regionInvalid}
-                  aria-describedby={formError ? "search-form-error" : undefined}
-                  value={regionId}
-                  onChange={(event) =>
-                    setRegionId(event.target.value as RegionId)
+              <HotelSelector
+                selectedHotelCodes={selectedHotelCodes}
+                invalid={hotelSelectionInvalid}
+                describedBy={formError ? "search-form-error" : undefined}
+                onChange={(hotelCodes) => {
+                  setSelectedHotelCodes(hotelCodes);
+                  if (
+                    hotelCodes.length > 0 &&
+                    formError === c.form.noHotels
+                  ) {
+                    setFormError("");
                   }
-                >
-                  {REGION_OPTIONS.map((region) => (
-                    <option value={region.id} key={region.id}>
-                      {region.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                }}
+              />
 
               <DateRangePicker
                 checkIn={checkIn}
@@ -1063,7 +1112,7 @@ export default function Home() {
 
             <div className="room-summary">
               <strong>
-                {template(c.form.roomsSummary, {
+                {formatMessage(c.form.roomsSummary, {
                   adults: adultsPerRoom,
                   rooms: roomCount,
                   total: totalAdults,
@@ -1076,11 +1125,7 @@ export default function Home() {
               <legend>{c.fields.smokingPreference}</legend>
               <div className="segmented-control">
                 {(
-                  [
-                    "any",
-                    "nonSmokingPreferred",
-                    "smokingOnly",
-                  ] as SmokingPreference[]
+                  ["any", "nonSmoking", "smoking"] as SmokingPreference[]
                 ).map((value) => (
                   <label key={value}>
                     <input
@@ -1096,7 +1141,7 @@ export default function Home() {
               </div>
             </fieldset>
 
-            {regionId === "all" && (
+            {selectedHotelCodes.length === ACTIVE_HOTEL_CODES.length && (
               <p className="all-notice">{c.allLongNotice}</p>
             )}
             {formError && (
@@ -1139,12 +1184,7 @@ export default function Home() {
                 onClick={() => applyHistory(item)}
                 key={historySignature(item)}
               >
-                <strong>
-                  {
-                    REGION_OPTIONS.find((region) => region.id === item.regionId)
-                      ?.label
-                  }
-                </strong>
+                <strong>{describeHotelSelection(item.hotelCodes)}</strong>
                 <span>
                   {formatDate(item.checkIn)} — {formatDate(item.checkOut)}
                 </span>
@@ -1173,11 +1213,7 @@ export default function Home() {
                 </span>
               </div>
               <p className="criteria-summary">
-                {
-                  REGION_OPTIONS.find(
-                    (region) => region.id === queryCriteria.regionId,
-                  )?.label
-                }
+                {describeHotelSelection(queryCriteria.hotelCodes)}
                 <span>·</span>
                 {formatDate(queryCriteria.checkIn)} —{" "}
                 {formatDate(queryCriteria.checkOut)}
@@ -1205,18 +1241,18 @@ export default function Home() {
           <div className="progress-card" aria-live="polite">
             <div className="progress-copy">
               <strong>
-                {template(c.results.completed, {
+                {formatMessage(c.results.completed, {
                   done: completedCount,
                   total: hotelStates.length,
                 })}
               </strong>
               <span>
                 {totalDuration !== null
-                  ? template(c.results.totalDuration, {
+                  ? formatMessage(c.results.totalDuration, {
                       seconds: (totalDuration / 1000).toFixed(1),
                     })
                   : queryStartedAt
-                    ? template(c.results.startedAt, {
+                    ? formatMessage(c.results.startedAt, {
                         time: formatKoreaTime(queryStartedAt),
                       })
                     : ""}

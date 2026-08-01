@@ -2,7 +2,7 @@ import type {
   ErrorType,
   HotelAvailability,
   RoomOffer,
-  SearchCriteria,
+  StayCriteria,
 } from "./types";
 import { planNameZh, roomNameZh } from "./toyoko-translations";
 
@@ -51,12 +51,12 @@ class AdapterError extends Error {
   }
 }
 
-function buildSourceUrl(hotelCode: string, criteria: SearchCriteria) {
+function buildSourceUrl(hotelCode: string, criteria: StayCriteria) {
   const url = new URL("/search/result/room_plan/", OFFICIAL_ORIGIN);
   url.searchParams.set("hotel", hotelCode);
   url.searchParams.set("people", String(criteria.adultsPerRoom));
   url.searchParams.set("room", String(criteria.roomCount));
-  // Always request the full set so "禁烟优先" can degrade to smoking rooms.
+  // Request all categories, then apply the user's exact preference in the UI.
   url.searchParams.set("smoking", "all");
   url.searchParams.set("start", criteria.checkIn);
   url.searchParams.set("end", criteria.checkOut);
@@ -160,7 +160,6 @@ function normalizeOffers(
         generalVacantRoom,
         membershipVacantRoom,
         bookingUrl: sourceUrl,
-        isSmokingFallback: false,
         qualificationNote: isQualifiedPlan
           ? "该计划可能有会员、学生或其他资格要求，请在官网确认。"
           : null,
@@ -225,7 +224,7 @@ async function fetchWithRetry(url: URL) {
 
 export async function queryHotelAvailability(
   hotelCode: string,
-  criteria: SearchCriteria,
+  criteria: StayCriteria,
 ): Promise<HotelAvailability> {
   const started = Date.now();
   const sourceQueriedAt = new Date().toISOString();

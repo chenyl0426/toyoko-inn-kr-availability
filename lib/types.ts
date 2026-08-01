@@ -8,7 +8,7 @@ export type RegionId =
   | "changwon"
   | "busan";
 
-export type SmokingPreference = "any" | "nonSmokingPreferred" | "smokingOnly";
+export type SmokingPreference = "any" | "nonSmoking" | "smoking";
 export type SmokingType = "nonSmoking" | "smoking" | "unknown";
 export type HotelStatus = "available" | "soldOut" | "failed";
 export type ErrorType =
@@ -18,12 +18,15 @@ export type ErrorType =
   | "parserChanged"
   | "unknown";
 
-export interface SearchCriteria {
-  regionId: RegionId;
+export interface StayCriteria {
   checkIn: string;
   checkOut: string;
   adultsPerRoom: number;
   roomCount: number;
+}
+
+export interface SearchCriteria extends StayCriteria {
+  hotelCodes: string[];
   smokingPreference: SmokingPreference;
   locale: "zh-CN";
   requestedAt: string;
@@ -57,7 +60,6 @@ export interface RoomOffer {
   generalVacantRoom: number;
   membershipVacantRoom: number;
   bookingUrl: string;
-  isSmokingFallback: boolean;
   qualificationNote: string | null;
 }
 
@@ -80,5 +82,4 @@ export type UiHotelState =
       result: HotelAvailability;
       visibleOffers: RoomOffer[];
       preferenceNoMatch: boolean;
-      hasSmokingFallback: boolean;
     };

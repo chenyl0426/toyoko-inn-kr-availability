@@ -141,3 +141,14 @@ export function hotelsForRegion(regionId: RegionId) {
     (hotel) => hotel.active && (regionId === "all" || hotel.cityId === regionId),
   );
 }
+
+export function hotelsForCodes(hotelCodes: readonly string[]) {
+  const selected = new Set(hotelCodes);
+  return HOTELS.filter(
+    (hotel) => hotel.active && selected.has(hotel.hotelCode),
+  );
+}
+
+export function normalizeHotelCodes(hotelCodes: readonly string[]) {
+  return hotelsForCodes(hotelCodes).map((hotel) => hotel.hotelCode);
+}
