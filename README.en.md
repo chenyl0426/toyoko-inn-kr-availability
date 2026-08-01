@@ -9,9 +9,6 @@ Select Toyoko Inn hotels across South Korea by region and compare live availabil
 ## Live demos
 
 - Vercel: [toyoko-inn-korea-availability.vercel.app](https://toyoko-inn-korea-availability.vercel.app)
-- ChatGPT Page: [toyoko-korea-rooms.xiongmiao2004.chatgpt.site](https://toyoko-korea-rooms.xiongmiao2004.chatgpt.site)
-
-> These are deployment placeholders. Replace them with the production URLs after publishing.
 
 ## Features
 
